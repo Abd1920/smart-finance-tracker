@@ -11,8 +11,11 @@ const {
   updateProfile,
   changePassword,
   deleteAccount,
+  uploadAvatar,
+  removeAvatar,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
+const { upload } = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -39,5 +42,9 @@ router.get("/profile", protect, getProfile);
 router.put("/profile", protect, updateProfile);
 router.put("/change-password", protect, changePassword);
 router.delete("/account", protect, deleteAccount);
+
+// Avatar — multipart/form-data upload
+router.post("/avatar", protect, upload.single("avatar"), uploadAvatar);
+router.delete("/avatar", protect, removeAvatar);
 
 module.exports = router;

@@ -43,6 +43,20 @@ const authService = {
     return res.data;
   },
 
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const res = await api.post("/auth/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  removeAvatar: async () => {
+    const res = await api.delete("/auth/avatar");
+    return res.data;
+  },
+
   updateProfile: async (data) => {
     const res = await api.put("/auth/profile", data);
     return res.data;

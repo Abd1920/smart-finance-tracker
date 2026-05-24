@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    avatarPublicId: {
+      type: String,
+      default: null,
+    },
     // Google OAuth
     googleId: {
       type: String,

@@ -21,10 +21,10 @@ const CURRENCIES = [
   { code: "QAR", label: "QAR - Qatari Riyal" },
   { code: "USD", label: "USD - US Dollar" },
   { code: "SAR", label: "SAR - Saudi Riyal" },
-  { code: "EUR", label: "EUR - Euro" },
-  { code: "GBP", label: "GBP - British Pound" },
   { code: "INR", label: "INR - Indian Rupee" },
   { code: "AED", label: "AED - UAE Dirham" },
+  { code: "EUR", label: "EUR - Euro" },
+  { code: "GBP", label: "GBP - British Pound" },
 ];
 
 // ── Delete Account modal ──────────────────────────────────────────────────────
@@ -154,14 +154,6 @@ const Settings = () => {
       .slice(0, 2);
   };
 
-  const toBase64 = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -173,26 +165,32 @@ const Settings = () => {
       toast.error("Image must be under 2MB");
       return;
     }
+
+    // Show local preview immediately
+    const localPreview = URL.createObjectURL(file);
+    setAvatarPreview(localPreview);
     setUploadingAvatar(true);
+
     try {
-      const base64 = await toBase64(file);
-      setAvatarPreview(base64);
-      const data = await authService.updateProfile({ avatar: base64 });
+      const data = await authService.uploadAvatar(file);
       updateUser(data.user);
+      setAvatarPreview(data.avatar); // replace local blob with Cloudinary URL
       toast.success("Profile picture updated");
     } catch {
       toast.error("Failed to update profile picture");
       setAvatarPreview(user?.avatar || "");
     } finally {
       setUploadingAvatar(false);
+      // Clean up local blob URL
+      URL.revokeObjectURL(localPreview);
     }
   };
 
   const handleRemoveAvatar = async () => {
     setUploadingAvatar(true);
     try {
-      const data = await authService.updateProfile({ avatar: "" });
-      updateUser(data.user);
+      await authService.removeAvatar();
+      updateUser({ ...user, avatar: "", avatarPublicId: null });
       setAvatarPreview("");
       toast.success("Profile picture removed");
     } catch {

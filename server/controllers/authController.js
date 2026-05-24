@@ -7,6 +7,10 @@ const {
   sendPasswordResetEmail,
   sendWelcomeEmail,
 } = require("../utils/emailService");
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../middleware/upload");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -513,6 +517,70 @@ const deleteAccount = async (req, res, next) => {
   }
 };
 
+// @desc    Upload avatar to Cloudinary
+// @route   POST /api/auth/avatar
+// @access  Private
+const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No image file provided" });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Delete old avatar from Cloudinary if exists
+    if (user.avatarPublicId) {
+      await deleteFromCloudinary(user.avatarPublicId);
+    }
+
+    // Upload new avatar to Cloudinary
+    const result = await uploadToCloudinary(req.file.buffer);
+
+    // Save URL and public_id to user
+    user.avatar = result.secure_url;
+    user.avatarPublicId = result.public_id;
+    await user.save();
+
+    const userObj = user.toObject();
+    userObj.hasPassword = !!user.password;
+    delete userObj.password;
+
+    res.status(200).json({
+      success: true,
+      avatar: result.secure_url,
+      user: userObj,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Remove avatar
+// @route   DELETE /api/auth/avatar
+// @access  Private
+const removeAvatar = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    // Delete from Cloudinary
+    if (user.avatarPublicId) {
+      await deleteFromCloudinary(user.avatarPublicId);
+    }
+
+    user.avatar = "";
+    user.avatarPublicId = null;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Avatar removed", avatar: "" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   sendVerification,
   verifyEmail,
@@ -524,4 +592,6 @@ module.exports = {
   updateProfile,
   changePassword,
   deleteAccount,
+  uploadAvatar,
+  removeAvatar,
 };

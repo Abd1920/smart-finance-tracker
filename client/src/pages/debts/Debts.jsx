@@ -145,12 +145,14 @@ const Debts = () => {
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard
-          title="Total I Owe"
-          amount={summary.totalToPay}
-          icon={MdTrendingDown}
-          color="red"
+          title="Net Position"
+          amount={summary.totalToReceive - summary.totalToPay}
+          icon={MdCreditCard}
+          color={
+            summary.totalToReceive >= summary.totalToPay ? "blue" : "orange"
+          }
           currency={currency}
-          subtitle="Pending payments"
+          subtitle="Owed to me − I owe"
         />
         <SummaryCard
           title="Total Owed to Me"
@@ -161,14 +163,12 @@ const Debts = () => {
           subtitle="Pending receivables"
         />
         <SummaryCard
-          title="Net Position"
-          amount={summary.totalToReceive - summary.totalToPay}
-          icon={MdCreditCard}
-          color={
-            summary.totalToReceive >= summary.totalToPay ? "blue" : "orange"
-          }
+          title="Total I Owe"
+          amount={summary.totalToPay}
+          icon={MdTrendingDown}
+          color="red"
           currency={currency}
-          subtitle="Owed to me − I owe"
+          subtitle="Pending payments"
         />
       </div>
 

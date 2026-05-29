@@ -9,7 +9,7 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["income", "expense"],
+      enum: ["income", "expense", "transfer"],
       required: [true, "Transaction type is required"],
     },
     amount: {
@@ -27,6 +27,22 @@ const transactionSchema = new mongoose.Schema(
       ref: "Account",
       required: [true, "Account is required"],
     },
+    // For transfers — marks which side is the debit (from) side
+    isDebit: {
+      type: Boolean,
+      default: null,
+    },
+    // For transfers — the destination account
+    toAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      default: null,
+    },
+    // Links the two transfer transactions together
+    transferRef: {
+      type: String,
+      default: null,
+    },
     date: {
       type: Date,
       required: [true, "Date is required"],
@@ -42,9 +58,9 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Index for fast filtering
 transactionSchema.index({ user: 1, date: -1 });
 transactionSchema.index({ user: 1, type: 1 });
 transactionSchema.index({ user: 1, account: 1 });
+transactionSchema.index({ user: 1, transferRef: 1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

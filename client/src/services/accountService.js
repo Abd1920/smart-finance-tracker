@@ -20,6 +20,13 @@ const accountService = {
     const res = await api.delete(`/accounts/${id}`);
     return res.data;
   },
+
+  resetBalance: async (id, currentBalance) => {
+    const res = await api.put(`/accounts/${id}/reset-balance`, {
+      currentBalance,
+    });
+    return res.data;
+  },
 };
 
 export default accountService;

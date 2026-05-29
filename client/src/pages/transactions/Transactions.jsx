@@ -4,6 +4,7 @@ import transactionService from "../../services/transactionService";
 import accountService from "../../services/accountService";
 import TransactionRow from "../../components/transactions/TransactionRow";
 import TransactionForm from "../../components/transactions/TransactionForm";
+import TransferForm from "../../components/transactions/TransferForm";
 import TransactionFilters from "../../components/transactions/TransactionFilters";
 import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
@@ -17,6 +18,7 @@ import {
   MdAccountBalance,
   MdChevronLeft,
   MdChevronRight,
+  MdSwapHoriz,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 
@@ -29,6 +31,8 @@ const defaultFilters = {
   year: new Date().getFullYear(),
   page: 1,
   limit: 15,
+  sort: "createdAt",
+  order: "desc",
 };
 
 const Transactions = () => {
@@ -47,9 +51,12 @@ const Transactions = () => {
   const [filters, setFilters] = useState(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [editTx, setEditTx] = useState(null);
   const [deleteTx, setDeleteTx] = useState(null);
+  const [deleteTransferTx, setDeleteTransferTx] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
@@ -110,6 +117,21 @@ const Transactions = () => {
     }
   };
 
+  const handleTransfer = async (formData) => {
+    setSubmitting(true);
+    try {
+      await transactionService.transfer(formData);
+      toast.success("Transfer completed successfully");
+      setShowTransfer(false);
+      fetchTransactions();
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Transfer failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTx) return;
     setDeleting(true);
@@ -121,6 +143,22 @@ const Transactions = () => {
       fetchAccounts();
     } catch {
       toast.error("Failed to delete transaction");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteTransfer = async () => {
+    if (!deleteTransferTx) return;
+    setDeleting(true);
+    try {
+      await transactionService.deleteTransfer(deleteTransferTx.transferRef);
+      toast.success("Transfer deleted - both account balances reversed");
+      setDeleteTransferTx(null);
+      fetchTransactions();
+      fetchAccounts();
+    } catch {
+      toast.error("Failed to delete transfer");
     } finally {
       setDeleting(false);
     }
@@ -138,20 +176,37 @@ const Transactions = () => {
             {meta.total} transaction{meta.total !== 1 ? "s" : ""} found
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditTx(null);
-            setShowForm(true);
-          }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <MdAdd size={20} />
-          <span className="hidden sm:inline">Add Transaction</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTransfer(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <MdSwapHoriz size={20} />
+            <span className="hidden sm:inline">Transfer</span>
+          </button>
+          <button
+            onClick={() => {
+              setEditTx(null);
+              setShowForm(true);
+            }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <MdAdd size={20} />
+            <span className="hidden sm:inline">Add Transaction</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <SummaryCard
+          title="Balance"
+          amount={meta.balance}
+          icon={MdAccountBalance}
+          color={meta.balance >= 0 ? "blue" : "red"}
+          currency={currency}
+          subtitle="Income − Expenses"
+        />
         <SummaryCard
           title="Income"
           amount={meta.income}
@@ -167,14 +222,6 @@ const Transactions = () => {
           color="red"
           currency={currency}
           subtitle="Filtered results"
-        />
-        <SummaryCard
-          title="Balance"
-          amount={meta.balance}
-          icon={MdAccountBalance}
-          color={meta.balance >= 0 ? "blue" : "red"}
-          currency={currency}
-          subtitle="Income − Expenses"
         />
       </div>
 
@@ -222,6 +269,7 @@ const Transactions = () => {
                     setShowForm(true);
                   }}
                   onDelete={setDeleteTx}
+                  onDeleteTransfer={setDeleteTransferTx}
                 />
               ))}
             </div>
@@ -256,6 +304,7 @@ const Transactions = () => {
         )}
       </div>
 
+      {/* Modals */}
       <TransactionForm
         isOpen={showForm}
         onClose={() => {
@@ -267,12 +316,30 @@ const Transactions = () => {
         accounts={accounts}
         isLoading={submitting}
       />
+
+      <TransferForm
+        isOpen={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        onSubmit={handleTransfer}
+        accounts={accounts}
+        isLoading={submitting}
+      />
+
       <ConfirmDialog
         isOpen={!!deleteTx}
         onClose={() => setDeleteTx(null)}
         onConfirm={handleDelete}
         title="Delete Transaction"
         message={`Delete this ${deleteTx?.type} of ${currency} ${deleteTx ? Number(deleteTx.amount).toLocaleString() : ""}? The account balance will be reversed automatically.`}
+        isLoading={deleting}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTransferTx}
+        onClose={() => setDeleteTransferTx(null)}
+        onConfirm={handleDeleteTransfer}
+        title="Delete Transfer"
+        message={`Delete this transfer of ${currency} ${deleteTransferTx ? Number(deleteTransferTx.amount).toLocaleString() : ""}? Both account balances will be reversed automatically.`}
         isLoading={deleting}
       />
     </div>

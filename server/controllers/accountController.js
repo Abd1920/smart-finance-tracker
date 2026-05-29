@@ -94,14 +94,14 @@ const updateAccount = async (req, res, next) => {
 
     const { name, type, color, icon, initialBalance } = req.body;
 
-    // If initialBalance changed, adjust currentBalance by the difference
-    if (
-      initialBalance !== undefined &&
-      initialBalance !== account.initialBalance
-    ) {
-      const diff = initialBalance - account.initialBalance;
-      account.currentBalance = account.currentBalance + diff;
-      account.initialBalance = initialBalance;
+    // Correct formula: strip old initial balance, add new one
+    // currentBalance = (currentBalance - oldInitialBalance) + newInitialBalance
+    // This preserves all transaction effects while updating the opening balance
+    if (initialBalance !== undefined) {
+      const parsed = parseFloat(initialBalance);
+      const transactionEffect = account.currentBalance - account.initialBalance;
+      account.currentBalance = transactionEffect + parsed;
+      account.initialBalance = parsed;
     }
 
     if (name) account.name = name;
@@ -109,6 +109,40 @@ const updateAccount = async (req, res, next) => {
     if (color) account.color = color;
     if (icon) account.icon = icon;
 
+    await account.save();
+
+    res.status(200).json({ success: true, account });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Manually reset account balance (for fixing corrupted balances)
+// @route   PUT /api/accounts/:id/reset-balance
+// @access  Private
+const resetBalance = async (req, res, next) => {
+  try {
+    const account = await Account.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!account) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Account not found" });
+    }
+
+    const { currentBalance } = req.body;
+
+    if (currentBalance === undefined || isNaN(parseFloat(currentBalance))) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid current balance is required" });
+    }
+
+    account.currentBalance = parseFloat(currentBalance);
+    account.initialBalance = parseFloat(currentBalance);
     await account.save();
 
     res.status(200).json({ success: true, account });
@@ -150,4 +184,5 @@ module.exports = {
   createAccount,
   updateAccount,
   deleteAccount,
+  resetBalance,
 };

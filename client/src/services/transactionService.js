@@ -1,13 +1,23 @@
-import api from './api';
+import api from "./api";
 
 const transactionService = {
+  transfer: async (data) => {
+    const res = await api.post("/transactions/transfer", data);
+    return res.data;
+  },
+
+  deleteTransfer: async (transferRef) => {
+    const res = await api.delete(`/transactions/transfer/${transferRef}`);
+    return res.data;
+  },
+
   getAll: async (params = {}) => {
-    const res = await api.get('/transactions', { params });
+    const res = await api.get("/transactions", { params });
     return res.data;
   },
 
   create: async (data) => {
-    const res = await api.post('/transactions', data);
+    const res = await api.post("/transactions", data);
     return res.data;
   },
 
@@ -22,12 +32,12 @@ const transactionService = {
   },
 
   getMonthlySummary: async (year) => {
-    const res = await api.get('/transactions/summary', { params: { year } });
+    const res = await api.get("/transactions/summary", { params: { year } });
     return res.data;
   },
 
   getCategoryBreakdown: async (params = {}) => {
-    const res = await api.get('/transactions/categories', { params });
+    const res = await api.get("/transactions/categories", { params });
     return res.data;
   },
 };

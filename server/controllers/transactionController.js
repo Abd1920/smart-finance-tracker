@@ -42,6 +42,9 @@ const getTransactions = async (req, res, next) => {
 
     const filter = { user: req.user._id };
 
+    // For transfers, only show the debit (from) side to avoid duplicate entries
+    filter.$nor = [{ type: "transfer", isDebit: false }];
+
     if (type) filter.type = type;
     if (category) filter.category = { $regex: category, $options: "i" };
     if (account) filter.account = account;
@@ -86,6 +89,7 @@ const getTransactions = async (req, res, next) => {
     const [transactions, total] = await Promise.all([
       Transaction.find(filter)
         .populate("account", "name type color")
+        .populate("toAccount", "name type color")
         .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit)),
@@ -393,6 +397,156 @@ const getCategoryBreakdown = async (req, res, next) => {
   }
 };
 
+// @desc    Create a transfer between two accounts
+// @route   POST /api/transactions/transfer
+// @access  Private
+const createTransfer = async (req, res, next) => {
+  try {
+    const { fromAccount, toAccount, amount, date, description } = req.body;
+
+    if (!fromAccount || !toAccount || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "From account, to account, and amount are required",
+      });
+    }
+
+    if (fromAccount === toAccount) {
+      return res.status(400).json({
+        success: false,
+        message: "From and To accounts must be different",
+      });
+    }
+
+    const parsedAmount = parseFloat(amount);
+
+    // Verify both accounts belong to user
+    const [fromAcc, toAcc] = await Promise.all([
+      Account.findOne({ _id: fromAccount, user: req.user._id, isActive: true }),
+      Account.findOne({ _id: toAccount, user: req.user._id, isActive: true }),
+    ]);
+
+    if (!fromAcc)
+      return res
+        .status(404)
+        .json({ success: false, message: "Source account not found" });
+    if (!toAcc)
+      return res
+        .status(404)
+        .json({ success: false, message: "Destination account not found" });
+
+    // Generate a unique reference to link both transactions
+    const transferRef = `TRF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const transferDate = date || new Date();
+    const transferDesc =
+      description || `Transfer from ${fromAcc.name} to ${toAcc.name}`;
+
+    // Create two linked transactions — debit (from) and credit (to)
+    const [debitTx, creditTx] = await Promise.all([
+      Transaction.create({
+        user: req.user._id,
+        type: "transfer",
+        amount: parsedAmount,
+        category: "Transfer",
+        account: fromAccount,
+        toAccount: toAccount,
+        transferRef,
+        isDebit: true, // this is the FROM side — shown in list
+        date: transferDate,
+        description: transferDesc,
+      }),
+      Transaction.create({
+        user: req.user._id,
+        type: "transfer",
+        amount: parsedAmount,
+        category: "Transfer",
+        account: toAccount,
+        toAccount: fromAccount,
+        transferRef,
+        isDebit: false, // this is the TO side — hidden from list
+        date: transferDate,
+        description: transferDesc,
+      }),
+    ]);
+
+    // Update both account balances
+    await Promise.all([
+      Account.findByIdAndUpdate(fromAccount, {
+        $inc: { currentBalance: -parsedAmount },
+      }),
+      Account.findByIdAndUpdate(toAccount, {
+        $inc: { currentBalance: parsedAmount },
+      }),
+    ]);
+
+    const populated = await debitTx.populate(
+      "account toAccount",
+      "name type color",
+    );
+
+    res
+      .status(201)
+      .json({ success: true, transaction: populated, transferRef });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete a transfer (both linked transactions)
+// @route   DELETE /api/transactions/transfer/:transferRef
+// @access  Private
+const deleteTransfer = async (req, res, next) => {
+  try {
+    const { transferRef } = req.params;
+
+    const transactions = await Transaction.find({
+      transferRef,
+      user: req.user._id,
+    });
+
+    if (!transactions || transactions.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Transfer not found" });
+    }
+
+    // Find the debit side (from account) to reverse balances
+    // Both transactions have the same amount, just reverse both effects
+    const tx = transactions[0];
+    const parsedAmount = tx.amount;
+
+    // Get the two accounts from the two transactions
+    const accountIds = transactions.map((t) => t.account.toString());
+    const uniqueAccounts = [...new Set(accountIds)];
+
+    // Reverse: one account gets +amount, other gets -amount back to original
+    // The debit tx's account loses the amount — so add it back
+    // The credit tx's account gains the amount — so subtract it back
+    // We identify which is which by toAccount reference
+    for (const t of transactions) {
+      const isDebit =
+        t.toAccount && t.account.toString() !== t.toAccount.toString();
+      if (isDebit) {
+        await Account.findByIdAndUpdate(t.account, {
+          $inc: { currentBalance: parsedAmount },
+        });
+        await Account.findByIdAndUpdate(t.toAccount, {
+          $inc: { currentBalance: -parsedAmount },
+        });
+        break;
+      }
+    }
+
+    await Transaction.deleteMany({ transferRef, user: req.user._id });
+
+    res
+      .status(200)
+      .json({ success: true, message: "Transfer deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTransactions,
   getTransaction,
@@ -401,4 +555,6 @@ module.exports = {
   deleteTransaction,
   getMonthlySummary,
   getCategoryBreakdown,
+  createTransfer,
+  deleteTransfer,
 };

@@ -7,7 +7,13 @@ import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
 import SummaryCard from "../../components/shared/SummaryCard";
-import { MdAdd, MdAccountBalance, MdTrendingUp } from "react-icons/md";
+import Modal from "../../components/shared/Modal";
+import {
+  MdAdd,
+  MdAccountBalance,
+  MdTrendingUp,
+  MdRefresh,
+} from "react-icons/md";
 import toast from "react-hot-toast";
 
 const Accounts = () => {
@@ -22,6 +28,11 @@ const Accounts = () => {
   const [editAccount, setEditAccount] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Reset balance state
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetValue, setResetValue] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -84,6 +95,27 @@ const Accounts = () => {
       toast.error("Failed to delete account");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleResetBalance = async () => {
+    if (!resetTarget) return;
+    const val = parseFloat(resetValue);
+    if (isNaN(val)) {
+      toast.error("Enter a valid balance");
+      return;
+    }
+    setResetting(true);
+    try {
+      await accountService.resetBalance(resetTarget._id, val);
+      toast.success(`Balance reset to ${currency} ${val.toLocaleString()}`);
+      setResetTarget(null);
+      setResetValue("");
+      fetchAccounts();
+    } catch {
+      toast.error("Failed to reset balance");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -162,6 +194,10 @@ const Accounts = () => {
               currency={currency}
               onEdit={handleOpenEdit}
               onDelete={setDeleteTarget}
+              onReset={(acc) => {
+                setResetTarget(acc);
+                setResetValue(String(acc.currentBalance));
+              }}
             />
           ))}
           <button
@@ -197,6 +233,60 @@ const Accounts = () => {
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This cannot be undone.`}
         isLoading={deleting}
       />
+
+      {/* Reset Balance Modal */}
+      <Modal
+        isOpen={!!resetTarget}
+        onClose={() => {
+          setResetTarget(null);
+          setResetValue("");
+        }}
+        title="Reset Account Balance"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manually set the current balance for{" "}
+            <strong>{resetTarget?.name}</strong>. Use this to fix incorrect
+            balances caused by deleted transactions.
+          </p>
+          <div>
+            <label className="label">Correct Balance ({currency})</label>
+            <input
+              type="number"
+              step="0.01"
+              value={resetValue}
+              onChange={(e) => setResetValue(e.target.value)}
+              className="input"
+              placeholder="0.00"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setResetTarget(null);
+                setResetValue("");
+              }}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleResetBalance}
+              disabled={resetting}
+              className="flex-1 flex items-center justify-center gap-2 btn-primary"
+            >
+              {resetting ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MdRefresh size={18} /> Reset Balance
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

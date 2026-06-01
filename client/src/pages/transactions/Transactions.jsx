@@ -27,8 +27,8 @@ const defaultFilters = {
   type: "",
   category: "",
   account: "",
-  month: new Date().getMonth() + 1,
-  year: new Date().getFullYear(),
+  month: "", // no default month filter
+  year: "", // no default year filter
   page: 1,
   limit: 15,
   sort: "createdAt",

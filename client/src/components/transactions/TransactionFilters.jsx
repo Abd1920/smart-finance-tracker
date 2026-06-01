@@ -144,7 +144,14 @@ const TransactionFilters = ({ filters, onChange, onReset, accounts }) => {
             <select
               value={filters.month || ""}
               onChange={(e) =>
-                onChange({ ...filters, month: e.target.value, page: 1 })
+                onChange({
+                  ...filters,
+                  month: e.target.value,
+                  year: e.target.value
+                    ? filters.year || new Date().getFullYear()
+                    : "",
+                  page: 1,
+                })
               }
               className="input text-sm py-2"
             >

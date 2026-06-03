@@ -21,6 +21,7 @@
     "mongoose-paginate-v2": "^1.7.64",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
+    "resend": "^6.12.4",
     "streamifier": "^0.1.1"
   },
   "devDependencies": {

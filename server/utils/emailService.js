@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = "Smart Finance Tracker <onboarding@resend.dev>";
 
 const sendVerificationEmail = async (toEmail, otp, userName) => {
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: FROM_EMAIL,
     to: toEmail,
     subject: "Verify Your Email — Smart Finance Tracker",
@@ -42,6 +42,7 @@ const sendVerificationEmail = async (toEmail, otp, userName) => {
       </body>
     `,
   });
+  console.log("Resend result:", JSON.stringify(result));
 };
 
 const sendWelcomeEmail = async (toEmail, userName) => {

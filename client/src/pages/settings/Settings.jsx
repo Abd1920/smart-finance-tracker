@@ -621,23 +621,6 @@ const Settings = () => {
 
       {/* ── FULL WIDTH BOTTOM ROW ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* About */}
-        <div className="card bg-gray-50 dark:bg-gray-800/50 shadow-none border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center py-8">
-          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
-            Smart Finance Tracker
-          </p>
-          <p className="text-xs text-gray-400">
-            Your data is encrypted and stored securely
-          </p>
-          <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
-            Member since{" "}
-            {new Date(user?.createdAt).toLocaleDateString("en-LK", {
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-
         {/* Delete Account */}
         <div className="card border border-red-100 dark:border-red-900/30 flex flex-col justify-between">
           <div className="mb-4">
@@ -656,6 +639,23 @@ const Settings = () => {
             <MdDelete size={18} />
             Delete My Account
           </button>
+        </div>
+
+        {/* About */}
+        <div className="card bg-gray-50 dark:bg-gray-800/50 shadow-none border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center py-8">
+          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+            Smart Finance Tracker
+          </p>
+          <p className="text-xs text-gray-400">
+            Your data is encrypted and stored securely
+          </p>
+          <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
+            Member since{" "}
+            {new Date(user?.createdAt).toLocaleDateString("en-LK", {
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
         </div>
       </div>
 

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import accountService from "../../services/accountService";
+import transactionService from "../../services/transactionService";
 import AccountCard from "../../components/accounts/AccountCard";
 import AccountForm from "../../components/accounts/AccountForm";
+import TransferForm from "../../components/transactions/TransferForm";
 import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
@@ -13,6 +15,7 @@ import {
   MdAccountBalance,
   MdTrendingUp,
   MdRefresh,
+  MdSwapHoriz,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 
@@ -28,6 +31,8 @@ const Accounts = () => {
   const [editAccount, setEditAccount] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   // Reset balance state
   const [resetTarget, setResetTarget] = useState(null);
@@ -119,6 +124,20 @@ const Accounts = () => {
     }
   };
 
+  const handleTransfer = async (formData) => {
+    setTransferring(true);
+    try {
+      await transactionService.transfer(formData);
+      toast.success("Transfer completed successfully");
+      setShowTransfer(false);
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Transfer failed");
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   if (loading) return <Spinner size="lg" className="h-64" />;
 
   return (
@@ -133,13 +152,22 @@ const Accounts = () => {
             Manage your bank accounts, cash, and wallets
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="btn-primary flex items-center gap-2"
-        >
-          <MdAdd size={20} />
-          <span className="hidden sm:inline">Add Account</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTransfer(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <MdSwapHoriz size={20} />
+            <span className="hidden sm:inline">Transfer</span>
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="btn-primary flex items-center gap-2"
+          >
+            <MdAdd size={20} />
+            <span className="hidden sm:inline">Add Account</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -287,6 +315,14 @@ const Accounts = () => {
           </div>
         </div>
       </Modal>
+
+      <TransferForm
+        isOpen={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        onSubmit={handleTransfer}
+        accounts={accounts}
+        isLoading={transferring}
+      />
     </div>
   );
 };

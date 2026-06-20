@@ -178,13 +178,6 @@ const Transactions = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowTransfer(true)}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <MdSwapHoriz size={20} />
-            <span className="hidden sm:inline">Transfer</span>
-          </button>
-          <button
             onClick={() => {
               setEditTx(null);
               setShowForm(true);

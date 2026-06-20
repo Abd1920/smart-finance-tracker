@@ -286,13 +286,16 @@ const deleteTransaction = async (req, res, next) => {
         .json({ success: false, message: "Transaction not found" });
     }
 
-    // Reverse the balance effect
-    await adjustBalance(
-      transaction.account,
-      transaction.amount,
-      transaction.type,
-      "subtract",
-    );
+    // Skip balance reversal for debt-generated transactions
+    // Debt deletion already handles balance reversal — reversing again causes double adjustment
+    if (!transaction.isDebtTransaction) {
+      await adjustBalance(
+        transaction.account,
+        transaction.amount,
+        transaction.type,
+        "subtract",
+      );
+    }
 
     await transaction.deleteOne();
 

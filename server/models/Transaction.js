@@ -27,11 +27,6 @@ const transactionSchema = new mongoose.Schema(
       ref: "Account",
       required: [true, "Account is required"],
     },
-    // For transfers — marks which side is the debit (from) side
-    isDebit: {
-      type: Boolean,
-      default: null,
-    },
     // For transfers — the destination account
     toAccount: {
       type: mongoose.Schema.Types.ObjectId,
@@ -42,6 +37,17 @@ const transactionSchema = new mongoose.Schema(
     transferRef: {
       type: String,
       default: null,
+    },
+    // Marks the debit side of a transfer (shown in list)
+    isDebit: {
+      type: Boolean,
+      default: null,
+    },
+    // Marks transactions created automatically by debt actions
+    // These should NOT trigger balance reversal when deleted from Transactions page
+    isDebtTransaction: {
+      type: Boolean,
+      default: false,
     },
     date: {
       type: Date,

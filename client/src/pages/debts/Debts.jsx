@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import debtService from "../../services/debtService";
+import accountService from "../../services/accountService";
 import DebtCard from "../../components/debts/DebtCard";
 import DebtForm from "../../components/debts/DebtForm";
+import SettleDebtModal from "../../components/debts/SettleDebtModal";
 import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
@@ -27,6 +29,7 @@ const Debts = () => {
   const currency = user?.currency || "LKR";
 
   const [debts, setDebts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [summary, setSummary] = useState({ totalToPay: 0, totalToReceive: 0 });
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -35,6 +38,8 @@ const Debts = () => {
   const [editDebt, setEditDebt] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [settleTarget, setSettleTarget] = useState(null);
+  const [settling, setSettling] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     try {
@@ -52,9 +57,17 @@ const Debts = () => {
     }
   }, []);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const data = await accountService.getAll();
+      setAccounts(data.accounts);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchDebts();
-  }, [fetchDebts]);
+    fetchAccounts();
+  }, [fetchDebts, fetchAccounts]);
 
   const filteredDebts = debts.filter((d) => {
     if (activeTab === "all") return d.status === "pending";
@@ -74,11 +87,17 @@ const Debts = () => {
         toast.success("Debt updated");
       } else {
         await debtService.create(formData);
-        toast.success("Debt added");
+        const msg = formData.linkedAccount
+          ? formData.debtType === "to_pay"
+            ? "Debt added - account balance increased & transaction recorded"
+            : "Debt added - account balance decreased & transaction recorded"
+          : "Debt added";
+        toast.success(msg);
       }
       setShowForm(false);
       setEditDebt(null);
       fetchDebts();
+      fetchAccounts();
     } catch (err) {
       toast.error(err.response?.data?.message || "Something went wrong");
     } finally {
@@ -86,15 +105,38 @@ const Debts = () => {
     }
   };
 
-  const handleSettle = async (debt) => {
+  const handleSettleClick = (debt) => {
+    if (debt.status === "settled") {
+      // Un-settling - do directly without modal
+      handleSettleConfirm(debt, null);
+    } else {
+      // Settling - show modal to pick account
+      setSettleTarget(debt);
+    }
+  };
+
+  const handleSettleConfirm = async (debt, settlementAccount) => {
+    setSettling(true);
     try {
-      await debtService.settle(debt._id);
-      toast.success(
-        debt.status === "settled" ? "Marked as pending" : "Marked as settled",
-      );
+      await debtService.settle(debt._id, settlementAccount);
+      const isSettling = debt.status !== "settled";
+      if (isSettling) {
+        const msg = settlementAccount
+          ? debt.debtType === "to_pay"
+            ? "Settled - account balance decreased & transaction recorded"
+            : "Settled - account balance increased & transaction recorded"
+          : "Marked as settled";
+        toast.success(msg);
+      } else {
+        toast.success("Marked as pending");
+      }
+      setSettleTarget(null);
       fetchDebts();
+      fetchAccounts();
     } catch {
       toast.error("Failed to update status");
+    } finally {
+      setSettling(false);
     }
   };
 
@@ -103,9 +145,14 @@ const Debts = () => {
     setDeleting(true);
     try {
       await debtService.delete(deleteTarget._id);
-      toast.success("Debt deleted");
+      toast.success(
+        deleteTarget.linkedAccount && deleteTarget.status === "pending"
+          ? "Debt deleted - account balance reversed"
+          : "Debt deleted",
+      );
       setDeleteTarget(null);
       fetchDebts();
+      fetchAccounts();
     } catch {
       toast.error("Failed to delete debt");
     } finally {
@@ -120,7 +167,6 @@ const Debts = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -142,17 +188,14 @@ const Debts = () => {
         </button>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard
-          title="Net Position"
-          amount={summary.totalToReceive - summary.totalToPay}
-          icon={MdCreditCard}
-          color={
-            summary.totalToReceive >= summary.totalToPay ? "blue" : "orange"
-          }
+          title="Total I Owe"
+          amount={summary.totalToPay}
+          icon={MdTrendingDown}
+          color="red"
           currency={currency}
-          subtitle="Owed to me − I owe"
+          subtitle="Pending payments"
         />
         <SummaryCard
           title="Total Owed to Me"
@@ -163,16 +206,17 @@ const Debts = () => {
           subtitle="Pending receivables"
         />
         <SummaryCard
-          title="Total I Owe"
-          amount={summary.totalToPay}
-          icon={MdTrendingDown}
-          color="red"
+          title="Net Position"
+          amount={summary.totalToReceive - summary.totalToPay}
+          icon={MdCreditCard}
+          color={
+            summary.totalToReceive >= summary.totalToPay ? "blue" : "orange"
+          }
           currency={currency}
-          subtitle="Pending payments"
+          subtitle="Owed to me − I owe"
         />
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit flex-wrap">
         {TABS.map((tab) => (
           <button
@@ -189,7 +233,6 @@ const Debts = () => {
         ))}
       </div>
 
-      {/* Cards */}
       {filteredDebts.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -231,7 +274,7 @@ const Debts = () => {
                 setShowForm(true);
               }}
               onDelete={setDeleteTarget}
-              onSettle={handleSettle}
+              onSettle={handleSettleClick}
             />
           ))}
         </div>
@@ -245,14 +288,26 @@ const Debts = () => {
         }}
         onSubmit={handleSubmit}
         debt={editDebt}
+        accounts={accounts}
         isLoading={submitting}
       />
+
+      <SettleDebtModal
+        isOpen={!!settleTarget}
+        onClose={() => setSettleTarget(null)}
+        onConfirm={handleSettleConfirm}
+        debt={settleTarget}
+        accounts={accounts}
+        currency={currency}
+        isLoading={settling}
+      />
+
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Debt"
-        message={`Delete debt of ${currency} ${deleteTarget ? fmt(deleteTarget.amount) : ""} with ${deleteTarget?.personName}? This cannot be undone.`}
+        message={`Delete debt of ${currency} ${deleteTarget ? fmt(deleteTarget.amount) : ""} with ${deleteTarget?.personName}?${deleteTarget?.linkedAccount && deleteTarget?.status === "pending" ? " Account balance will be reversed." : ""}`}
         isLoading={deleting}
       />
     </div>

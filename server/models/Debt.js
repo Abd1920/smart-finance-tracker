@@ -42,6 +42,22 @@ const debtSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Account that received/gave money when debt was created
+    linkedAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      default: null,
+    },
+    // Account used when settling the debt
+    settlementAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      default: null,
+    },
+    accountAdjusted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

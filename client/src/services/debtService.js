@@ -16,8 +16,8 @@ const debtService = {
     return res.data;
   },
 
-  settle: async (id) => {
-    const res = await api.put(`/debts/${id}/settle`);
+  settle: async (id, settlementAccount = null) => {
+    const res = await api.put(`/debts/${id}/settle`, { settlementAccount });
     return res.data;
   },
 

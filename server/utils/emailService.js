@@ -1,11 +1,19 @@
-const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+  port: parseInt(process.env.BREVO_SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
+  },
+});
 
-const FROM_EMAIL = "Smart Finance Tracker <onboarding@resend.dev>";
+const FROM_EMAIL = `Smart Finance Tracker <${process.env.BREVO_SMTP_USER}>`;
 
 const sendVerificationEmail = async (toEmail, otp, userName) => {
-  const result = await resend.emails.send({
+  await transporter.sendMail({
     from: FROM_EMAIL,
     to: toEmail,
     subject: "Verify Your Email — Smart Finance Tracker",
@@ -42,11 +50,10 @@ const sendVerificationEmail = async (toEmail, otp, userName) => {
       </body>
     `,
   });
-  console.log("Resend result:", JSON.stringify(result));
 };
 
 const sendWelcomeEmail = async (toEmail, userName) => {
-  await resend.emails.send({
+  await transporter.sendMail({
     from: FROM_EMAIL,
     to: toEmail,
     subject: "Welcome to Smart Finance Tracker! 🎉",
@@ -92,7 +99,7 @@ const sendWelcomeEmail = async (toEmail, userName) => {
 
 const sendPasswordResetEmail = async (toEmail, resetToken, userName) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-  await resend.emails.send({
+  await transporter.sendMail({
     from: FROM_EMAIL,
     to: toEmail,
     subject: "Reset Your Password — Smart Finance Tracker",
@@ -117,8 +124,51 @@ const sendPasswordResetEmail = async (toEmail, resetToken, userName) => {
                     <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Reset Password</a>
                   </td></tr>
                 </table>
-                <p style="margin:0 0 8px 0;font-size:13px;color:#94a3b8;">Or copy: ${resetUrl}</p>
+                <p style="margin:0 0 8px 0;font-size:13px;color:#94a3b8;">Or copy this link:</p>
+                <p style="margin:0 0 24px 0;font-size:12px;color:#2563eb;word-break:break-all;">${resetUrl}</p>
                 <p style="margin:0;font-size:13px;color:#94a3b8;">If you didn't request this, ignore this email.</p>
+              </td></tr>
+              <tr><td align="center" style="padding-top:24px;">
+                <p style="margin:0;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} Smart Finance Tracker</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body>
+    `,
+  });
+};
+
+const sendFeedbackEmail = async ({ name, email, message }) => {
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: process.env.BREVO_SMTP_USER,
+    subject: `Smart Finance Tracker — Feedback from ${name || "Anonymous"}`,
+    html: `
+      <body style="margin:0;padding:0;background-color:#f8fafc;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 20px;">
+          <tr><td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+              <tr><td style="background-color:#ffffff;border-radius:16px;padding:40px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                <h1 style="margin:0 0 24px 0;font-size:20px;font-weight:700;color:#0f172a;">💬 New Feedback Received</h1>
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                  <tr>
+                    <td style="padding:12px;background:#f1f5f9;border-radius:8px 8px 0 0;border-bottom:1px solid #e2e8f0;">
+                      <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">From</p>
+                      <p style="margin:4px 0 0 0;font-size:15px;font-weight:600;color:#0f172a;">${name || "Anonymous"}</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:12px;background:#f1f5f9;border-radius:0 0 8px 8px;">
+                      <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Email</p>
+                      <p style="margin:4px 0 0 0;font-size:15px;color:#2563eb;">${email || "Not provided"}</p>
+                    </td>
+                  </tr>
+                </table>
+                <div style="background:#f8fafc;border-left:4px solid #2563eb;border-radius:0 8px 8px 0;padding:16px;">
+                  <p style="margin:0 0 8px 0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Message</p>
+                  <p style="margin:0;font-size:15px;color:#475569;line-height:1.6;">${message}</p>
+                </div>
               </td></tr>
               <tr><td align="center" style="padding-top:24px;">
                 <p style="margin:0;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} Smart Finance Tracker</p>
@@ -135,4 +185,5 @@ module.exports = {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
+  sendFeedbackEmail,
 };

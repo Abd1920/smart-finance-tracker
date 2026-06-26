@@ -65,3 +65,25 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
+
+// Feedback route
+app.post("/api/feedback", async (req, res, next) => {
+  try {
+    const { name, email, message } = req.body;
+    if (!message || message.trim().length < 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Please enter a message" });
+    }
+    const { sendFeedbackEmail } = require("./utils/emailService");
+    await sendFeedbackEmail({ name, email, message });
+    res
+      .status(200)
+      .json({ success: true, message: "Feedback sent successfully" });
+  } catch (error) {
+    console.error("Feedback email error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to send feedback" });
+  }
+});

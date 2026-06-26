@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Navbar from "../components/layout/Navbar";
+import HelpButton from "../components/shared/HelpButton";
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,6 +22,9 @@ const AppLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating Help button — visible on all pages */}
+      <HelpButton />
     </div>
   );
 };

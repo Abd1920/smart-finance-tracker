@@ -297,8 +297,10 @@ const Settings = () => {
 
   const handleDeleted = () => {
     toast.success("Account deleted successfully");
-    logout();
-    navigate("/login");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    // Hard redirect — avoids React context/router state mismatch after account deletion
+    window.location.href = "/login";
   };
 
   return (

@@ -45,28 +45,11 @@ app.get("/api/health", (req, res) => {
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
-
 app.use("/api/accounts", require("./routes/accounts"));
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/debts", require("./routes/debts"));
 
-// 404 handler
-app.use("*", (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-  });
-});
-
-// Global error handler (must be last)
-app.use(errorHandler);
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
-
-// Feedback route
+// Feedback route — MUST be before the 404 handler
 app.post("/api/feedback", async (req, res, next) => {
   try {
     const { name, email, message } = req.body;
@@ -86,4 +69,20 @@ app.post("/api/feedback", async (req, res, next) => {
       .status(500)
       .json({ success: false, message: "Failed to send feedback" });
   }
+});
+
+// 404 handler — MUST be after all routes
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+// Global error handler (must be last)
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

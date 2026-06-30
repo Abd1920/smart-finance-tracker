@@ -81,12 +81,16 @@ const DeleteAccountModal = ({ user, onClose, onDeleted }) => {
                     setPassword(e.target.value);
                     setError("");
                   }}
-                  className={`input text-sm pr-10 ${error ? "border-red-400" : ""}`}
+                  className={`input text-sm pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden ${error ? "border-red-400" : ""}`}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setShowPassword((v) => !v);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                 >
                   {showPassword ? (
                     <MdVisibilityOff size={18} />
@@ -150,7 +154,9 @@ const Settings = () => {
     newPassword: "",
     confirmPassword: "",
   });
-  const [showPasswords, setShowPasswords] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
 
@@ -522,7 +528,7 @@ const Settings = () => {
                   <label className="label">Current Password</label>
                   <div className="relative">
                     <input
-                      type={showPasswords ? "text" : "password"}
+                      type={showCurrentPassword ? "text" : "password"}
                       value={passwords.currentPassword}
                       onChange={(e) => {
                         setPasswords((p) => ({
@@ -536,8 +542,23 @@ const Settings = () => {
                           }));
                       }}
                       placeholder="Enter your current password"
-                      className={`input pr-10 ${passwordErrors.currentPassword ? "border-red-400" : ""}`}
+                      className={`input pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden ${passwordErrors.currentPassword ? "border-red-400" : ""}`}
                     />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setShowCurrentPassword((v) => !v);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                    >
+                      {showCurrentPassword ? (
+                        <MdVisibilityOff size={18} />
+                      ) : (
+                        <MdVisibility size={18} />
+                      )}
+                    </button>
                   </div>
                   {passwordErrors.currentPassword && (
                     <p className="text-red-500 text-xs mt-1">
@@ -551,7 +572,7 @@ const Settings = () => {
                 <label className="label">New Password</label>
                 <div className="relative">
                   <input
-                    type={showPasswords ? "text" : "password"}
+                    type={showNewPassword ? "text" : "password"}
                     value={passwords.newPassword}
                     onChange={(e) => {
                       setPasswords((p) => ({
@@ -562,14 +583,18 @@ const Settings = () => {
                         setPasswordErrors((p) => ({ ...p, newPassword: "" }));
                     }}
                     placeholder="Min. 6 characters"
-                    className={`input pr-10 ${passwordErrors.newPassword ? "border-red-400" : ""}`}
+                    className={`input pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden ${passwordErrors.newPassword ? "border-red-400" : ""}`}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPasswords((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    tabIndex={-1}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setShowNewPassword((v) => !v);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                   >
-                    {showPasswords ? (
+                    {showNewPassword ? (
                       <MdVisibilityOff size={18} />
                     ) : (
                       <MdVisibility size={18} />
@@ -585,36 +610,46 @@ const Settings = () => {
 
               <div>
                 <label className="label">Confirm Password</label>
-                <input
-                  type={showPasswords ? "text" : "password"}
-                  value={passwords.confirmPassword}
-                  onChange={(e) => {
-                    setPasswords((p) => ({
-                      ...p,
-                      confirmPassword: e.target.value,
-                    }));
-                    if (passwordErrors.confirmPassword)
-                      setPasswordErrors((p) => ({ ...p, confirmPassword: "" }));
-                  }}
-                  placeholder="Repeat new password"
-                  className={`input ${passwordErrors.confirmPassword ? "border-red-400" : ""}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwords.confirmPassword}
+                    onChange={(e) => {
+                      setPasswords((p) => ({
+                        ...p,
+                        confirmPassword: e.target.value,
+                      }));
+                      if (passwordErrors.confirmPassword)
+                        setPasswordErrors((p) => ({
+                          ...p,
+                          confirmPassword: "",
+                        }));
+                    }}
+                    placeholder="Repeat new password"
+                    className={`input pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden ${passwordErrors.confirmPassword ? "border-red-400" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setShowConfirmPassword((v) => !v);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                  >
+                    {showConfirmPassword ? (
+                      <MdVisibilityOff size={18} />
+                    ) : (
+                      <MdVisibility size={18} />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.confirmPassword && (
                   <p className="text-red-500 text-xs mt-1">
                     {passwordErrors.confirmPassword}
                   </p>
                 )}
               </div>
-
-              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showPasswords}
-                  onChange={(e) => setShowPasswords(e.target.checked)}
-                  className="rounded"
-                />
-                Show passwords
-              </label>
 
               <button
                 type="submit"

@@ -1,4 +1,4 @@
-// Uses Brevo's HTTP API (not SMTP) — Render blocks outbound SMTP ports,
+// Uses Brevo's HTTP API (not SMTP) - Render blocks outbound SMTP ports,
 // but HTTPS/443 API calls work fine.
 const FROM_EMAIL = process.env.BREVO_SMTP_USER || "abdhussain1920@gmail.com";
 const FROM_NAME = "Smart Finance Tracker";
@@ -156,7 +156,7 @@ const sendPasswordResetEmail = async (toEmail, resetToken, userName) => {
   return sendViaBrevoAPI({
     to: toEmail,
     toName: userName,
-    subject: "Reset Your Password — Smart Finance Tracker",
+    subject: "Reset Your Password - Smart Finance Tracker",
     html,
   });
 };
@@ -199,7 +199,7 @@ const sendFeedbackEmail = async ({ name, email, message }) => {
   return sendViaBrevoAPI({
     to: FROM_EMAIL,
     toName: "Admin",
-    subject: `Smart Finance Tracker — Feedback from ${name || "Anonymous"}`,
+    subject: `Smart Finance Tracker - Feedback from ${name || "Anonymous"}`,
     html,
   });
 };

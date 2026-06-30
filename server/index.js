@@ -49,7 +49,7 @@ app.use("/api/accounts", require("./routes/accounts"));
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/debts", require("./routes/debts"));
 
-// Feedback route — MUST be before the 404 handler
+// Feedback route - MUST be before the 404 handler
 app.post("/api/feedback", async (req, res, next) => {
   try {
     const { name, email, message } = req.body;
@@ -71,7 +71,7 @@ app.post("/api/feedback", async (req, res, next) => {
   }
 });
 
-// 404 handler — MUST be after all routes
+// 404 handler - MUST be after all routes
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,

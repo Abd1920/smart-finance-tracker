@@ -30,6 +30,7 @@ const CURRENCIES = [
 // ── Delete Account modal ──────────────────────────────────────────────────────
 const DeleteAccountModal = ({ user, onClose, onDeleted }) => {
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 

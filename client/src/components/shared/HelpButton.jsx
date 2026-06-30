@@ -36,29 +36,34 @@ const HelpButton = () => {
 
   return (
     <>
-      {/* Floating Help Button — fixed bottom-right corner, above content */}
-      <button
-        onClick={() => {
-          setIsOpen(true);
-          setSuccess(false);
-          setError("");
-        }}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium"
-        title="Help & Feedback"
-      >
-        <MdHelpOutline size={18} />
-        <span>Help</span>
-      </button>
+      {/* Floating Help Button — fixed bottom-right corner */}
+      {!isOpen && (
+        <button
+          onClick={() => {
+            setIsOpen(true);
+            setSuccess(false);
+            setError("");
+          }}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium"
+          title="Help & Feedback"
+        >
+          <MdHelpOutline size={18} />
+          <span>Help</span>
+        </button>
+      )}
 
-      {/* Modal — anchored to bottom-right corner, opens upward */}
+      {/* Help Panel — replaces the button in the same bottom-right position */}
       {isOpen && (
-        <div className="fixed inset-0 z-50" onClick={() => setIsOpen(false)}>
+        <>
+          {/* Invisible overlay to catch outside clicks, doesn't dim the screen */}
           <div
-            className="absolute bottom-24 right-6 w-[calc(100%-3rem)] sm:w-96 max-h-[75vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+
+          <div className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] max-w-sm max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700">
             {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-primary-600 rounded-t-2xl z-10">
+            <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-primary-600 rounded-t-2xl">
               <div className="flex items-center gap-2">
                 <MdHelpOutline size={20} className="text-white" />
                 <h3 className="text-base font-semibold text-white">
@@ -172,7 +177,7 @@ const HelpButton = () => {
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );

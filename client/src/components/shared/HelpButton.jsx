@@ -25,8 +25,10 @@ const HelpButton = () => {
         setSuccess(false);
         setIsOpen(false);
       }, 3000);
-    } catch {
-      setError("Failed to send. Please try again.");
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || "Failed to send. Please try again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -34,14 +36,14 @@ const HelpButton = () => {
 
   return (
     <>
-      {/* Floating Help Button */}
+      {/* Floating Help Button — positioned higher to avoid overlapping pagination */}
       <button
         onClick={() => {
           setIsOpen(true);
           setSuccess(false);
           setError("");
         }}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium"
+        className="fixed bottom-20 right-5 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all text-sm font-medium"
         title="Help & Feedback"
       >
         <MdHelpOutline size={18} />
@@ -56,9 +58,9 @@ const HelpButton = () => {
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="relative w-full sm:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-10 overflow-hidden">
+          <div className="relative w-full sm:w-96 max-h-[85vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-10">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-primary-600">
+            <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-primary-600 z-10">
               <div className="flex items-center gap-2">
                 <MdHelpOutline size={20} className="text-white" />
                 <h3 className="text-base font-semibold text-white">
@@ -92,7 +94,14 @@ const HelpButton = () => {
                     improvement? We'd love to hear from you!
                   </p>
 
-                  {/* Name */}
+                  {error && (
+                    <div className="p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <p className="text-red-600 dark:text-red-400 text-xs">
+                        {error}
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="label">
                       Your Name{" "}
@@ -112,7 +121,6 @@ const HelpButton = () => {
                     />
                   </div>
 
-                  {/* Email */}
                   <div>
                     <label className="label">
                       Email Address{" "}
@@ -131,7 +139,6 @@ const HelpButton = () => {
                     />
                   </div>
 
-                  {/* Message */}
                   <div>
                     <label className="label">How can we help you?</label>
                     <textarea
@@ -142,19 +149,12 @@ const HelpButton = () => {
                       }}
                       placeholder="Describe your issue or suggestion..."
                       rows={4}
-                      className={`input text-sm resize-none ${error ? "border-red-400" : ""}`}
+                      className="input text-sm resize-none"
                       maxLength={500}
                     />
-                    <div className="flex justify-between mt-1">
-                      {error ? (
-                        <p className="text-red-500 text-xs">{error}</p>
-                      ) : (
-                        <span />
-                      )}
-                      <p className="text-xs text-gray-400 ml-auto">
-                        {form.message.length}/500
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-1 text-right">
+                      {form.message.length}/500
+                    </p>
                   </div>
 
                   <button

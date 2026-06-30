@@ -71,16 +71,29 @@ const DeleteAccountModal = ({ user, onClose, onDeleted }) => {
 
           {!user?.isGoogleUser && (
             <div className="w-full mb-3">
-              <input
-                type="password"
-                placeholder="Enter your password to confirm"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError("");
-                }}
-                className={`input text-sm ${error ? "border-red-400" : ""}`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password to confirm"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  className={`input text-sm pr-10 ${error ? "border-red-400" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <MdVisibilityOff size={18} />
+                  ) : (
+                    <MdVisibility size={18} />
+                  )}
+                </button>
+              </div>
               {error && (
                 <p className="text-red-500 text-xs mt-1 text-left">{error}</p>
               )}

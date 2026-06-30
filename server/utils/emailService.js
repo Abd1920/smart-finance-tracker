@@ -67,7 +67,7 @@ const sendVerificationEmail = async (toEmail, otp, userName) => {
   return sendViaBrevoAPI({
     to: toEmail,
     toName: userName,
-    subject: "Verify Your Email — Smart Finance Tracker",
+    subject: "Verify Your Email - Smart Finance Tracker",
     html,
   });
 };

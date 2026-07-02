@@ -14,6 +14,8 @@ import {
   MdCreditCard,
   MdTrendingDown,
   MdTrendingUp,
+  MdFilterList,
+  MdClose,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 
@@ -40,6 +42,9 @@ const Debts = () => {
   const [deleting, setDeleting] = useState(false);
   const [settleTarget, setSettleTarget] = useState(null);
   const [settling, setSettling] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     try {
@@ -70,14 +75,30 @@ const Debts = () => {
   }, [fetchDebts, fetchAccounts]);
 
   const filteredDebts = debts.filter((d) => {
-    if (activeTab === "all") return d.status === "pending";
-    if (activeTab === "to_pay")
-      return d.debtType === "to_pay" && d.status === "pending";
-    if (activeTab === "to_receive")
-      return d.debtType === "to_receive" && d.status === "pending";
-    if (activeTab === "settled") return d.status === "settled";
+    if (activeTab === "all" && d.status !== "pending") return false;
+    if (
+      activeTab === "to_pay" &&
+      (d.debtType !== "to_pay" || d.status !== "pending")
+    )
+      return false;
+    if (
+      activeTab === "to_receive" &&
+      (d.debtType !== "to_receive" || d.status !== "pending")
+    )
+      return false;
+    if (activeTab === "settled" && d.status !== "settled") return false;
+
+    const createdAt = new Date(d.createdAt);
+    if (startDate && createdAt < new Date(startDate)) return false;
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (createdAt > end) return false;
+    }
     return true;
   });
+
+  const activeDateFilters = (startDate ? 1 : 0) + (endDate ? 1 : 0);
 
   const handleSubmit = async (formData) => {
     setSubmitting(true);
@@ -217,21 +238,84 @@ const Debts = () => {
         />
       </div>
 
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit flex-wrap">
-        {TABS.map((tab) => (
+      {/* Tabs + filter toggle row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex-wrap">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Date filter toggle */}
+        <button
+          onClick={() => setShowDateFilter((v) => !v)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+            showDateFilter || activeDateFilters > 0
+              ? "bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-900/20 dark:border-primary-700 dark:text-primary-400"
+              : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          <MdFilterList size={16} />
+          Date Filter
+          {activeDateFilters > 0 && (
+            <span className="w-5 h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center">
+              {activeDateFilters}
+            </span>
+          )}
+        </button>
+
+        {activeDateFilters > 0 && (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
-            }`}
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 transition-colors"
           >
-            {tab.label}
+            <MdClose size={14} /> Clear
           </button>
-        ))}
+        )}
       </div>
+
+      {/* Collapsible date filter */}
+      {showDateFilter && (
+        <div className="flex flex-wrap items-end gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+          <div>
+            <label className="label text-xs">From Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="input text-sm py-2"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">To Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input text-sm py-2"
+            />
+          </div>
+          {activeDateFilters > 0 && (
+            <p className="text-xs text-primary-600 dark:text-primary-400 self-end pb-2">
+              {filteredDebts.length} result
+              {filteredDebts.length !== 1 ? "s" : ""} found
+            </p>
+          )}
+        </div>
+      )}
 
       {filteredDebts.length === 0 ? (
         <div className="card">

@@ -83,114 +83,171 @@ const TransactionFilters = ({ filters, onChange, onReset, accounts }) => {
 
       {/* Expanded filters */}
       {showFilters && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-          {/* Type */}
-          <div>
-            <label className="label text-xs">Type</label>
-            <select
-              value={filters.type || ""}
-              onChange={(e) =>
-                onChange({ ...filters, type: e.target.value, page: 1 })
-              }
-              className="input text-sm py-2"
-            >
-              <option value="">All Types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+            {/* Type */}
+            <div>
+              <label className="label text-xs">Type</label>
+              <select
+                value={filters.type || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, type: e.target.value, page: 1 })
+                }
+                className="input text-sm py-2"
+              >
+                <option value="">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="label text-xs">Category</label>
+              <select
+                value={filters.category || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, category: e.target.value, page: 1 })
+                }
+                className="input text-sm py-2"
+              >
+                <option value="">All Categories</option>
+                {allCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Account */}
+            <div>
+              <label className="label text-xs">Account</label>
+              <select
+                value={filters.account || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, account: e.target.value, page: 1 })
+                }
+                className="input text-sm py-2"
+              >
+                <option value="">All Accounts</option>
+                {accounts?.map((a) => (
+                  <option key={a._id} value={a._id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month */}
+            <div>
+              <label className="label text-xs">Month</label>
+              <select
+                value={filters.month || ""}
+                onChange={(e) =>
+                  onChange({
+                    ...filters,
+                    month: e.target.value,
+                    year: e.target.value
+                      ? filters.year || new Date().getFullYear()
+                      : "",
+                    page: 1,
+                  })
+                }
+                className="input text-sm py-2"
+              >
+                <option value="">All Months</option>
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={i + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year */}
+            <div>
+              <label className="label text-xs">Year</label>
+              <select
+                value={filters.year || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, year: e.target.value, page: 1 })
+                }
+                className="input text-sm py-2"
+              >
+                <option value="">All Years</option>
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Reset button inside panel */}
+            <div className="flex items-end">
+              <button
+                onClick={onReset}
+                className="btn-secondary w-full text-sm py-2"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
-          {/* Category */}
-          <div>
-            <label className="label text-xs">Category</label>
-            <select
-              value={filters.category || ""}
-              onChange={(e) =>
-                onChange({ ...filters, category: e.target.value, page: 1 })
-              }
-              className="input text-sm py-2"
-            >
-              <option value="">All Categories</option>
-              {allCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Account */}
-          <div>
-            <label className="label text-xs">Account</label>
-            <select
-              value={filters.account || ""}
-              onChange={(e) =>
-                onChange({ ...filters, account: e.target.value, page: 1 })
-              }
-              className="input text-sm py-2"
-            >
-              <option value="">All Accounts</option>
-              {accounts?.map((a) => (
-                <option key={a._id} value={a._id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Month */}
-          <div>
-            <label className="label text-xs">Month</label>
-            <select
-              value={filters.month || ""}
-              onChange={(e) =>
-                onChange({
-                  ...filters,
-                  month: e.target.value,
-                  year: e.target.value
-                    ? filters.year || new Date().getFullYear()
-                    : "",
-                  page: 1,
-                })
-              }
-              className="input text-sm py-2"
-            >
-              <option value="">All Months</option>
-              {MONTHS.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Year */}
-          <div>
-            <label className="label text-xs">Year</label>
-            <select
-              value={filters.year || ""}
-              onChange={(e) =>
-                onChange({ ...filters, year: e.target.value, page: 1 })
-              }
-              className="input text-sm py-2"
-            >
-              <option value="">All Years</option>
-              {YEARS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Reset button inside panel */}
-          <div className="flex items-end">
-            <button
-              onClick={onReset}
-              className="btn-secondary w-full text-sm py-2"
-            >
-              Reset
-            </button>
+          {/* Date range row - inside showFilters block */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+            <div>
+              <label className="label text-xs">From Date</label>
+              <input
+                type="date"
+                value={filters.startDate || ""}
+                onChange={(e) =>
+                  onChange({
+                    ...filters,
+                    startDate: e.target.value,
+                    month: "",
+                    year: "",
+                    page: 1,
+                  })
+                }
+                className="input text-sm py-2"
+              />
+            </div>
+            <div>
+              <label className="label text-xs">To Date</label>
+              <input
+                type="date"
+                value={filters.endDate || ""}
+                onChange={(e) =>
+                  onChange({
+                    ...filters,
+                    endDate: e.target.value,
+                    month: "",
+                    year: "",
+                    page: 1,
+                  })
+                }
+                className="input text-sm py-2"
+              />
+            </div>
+            {(filters.startDate || filters.endDate) && (
+              <div className="flex items-end">
+                <button
+                  onClick={() =>
+                    onChange({
+                      ...filters,
+                      startDate: "",
+                      endDate: "",
+                      page: 1,
+                    })
+                  }
+                  className="btn-secondary w-full text-sm py-2"
+                >
+                  Clear Dates
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

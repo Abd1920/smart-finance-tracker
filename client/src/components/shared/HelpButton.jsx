@@ -36,7 +36,7 @@ const HelpButton = () => {
 
   return (
     <>
-      {/* Floating Help Button — fixed bottom-right corner */}
+      {/* Floating Help Button - fixed bottom-right corner */}
       {!isOpen && (
         <button
           onClick={() => {
@@ -52,7 +52,7 @@ const HelpButton = () => {
         </button>
       )}
 
-      {/* Help Panel — replaces the button in the same bottom-right position */}
+      {/* Help Panel - replaces the button in the same bottom-right position */}
       {isOpen && (
         <>
           {/* Invisible overlay to catch outside clicks, doesn't dim the screen */}

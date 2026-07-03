@@ -1,7 +1,7 @@
 const Transaction = require("../models/Transaction");
 const Account = require("../models/Account");
 
-// Helper — adjust account balance when a transaction is created/edited/deleted
+// Helper - adjust account balance when a transaction is created/edited/deleted
 const adjustBalance = async (accountId, amount, type, direction) => {
   // direction: 'add' or 'subtract'
   const delta =
@@ -97,8 +97,14 @@ const getTransactions = async (req, res, next) => {
     ]);
 
     // Totals for filtered results
+    // Calculate totals excluding debt-generated transactions (same filter as category breakdown)
+    const totalsFilter = {
+      ...filter,
+      isDebtTransaction: { $ne: true },
+    };
+
     const totals = await Transaction.aggregate([
-      { $match: filter },
+      { $match: totalsFilter },
       {
         $group: {
           _id: "$type",
@@ -287,7 +293,7 @@ const deleteTransaction = async (req, res, next) => {
     }
 
     // Skip balance reversal for debt-generated transactions
-    // Debt deletion already handles balance reversal — reversing again causes double adjustment
+    // Debt deletion already handles balance reversal - reversing again causes double adjustment
     if (!transaction.isDebtTransaction) {
       await adjustBalance(
         transaction.account,
@@ -373,10 +379,21 @@ const getMonthlySummary = async (req, res, next) => {
 // @access  Private
 const getCategoryBreakdown = async (req, res, next) => {
   try {
-    const { type = "expense", month, year } = req.query;
-    const filter = { user: req.user._id, type };
+    const { type = "expense", month, year, startDate, endDate } = req.query;
+    const filter = {
+      user: req.user._id,
+      type,
+      // Exclude debt-generated transactions from category breakdown
+      isDebtTransaction: { $ne: true },
+      // Exclude transfer credit side (only show debit side to avoid duplicates)
+      $nor: [{ type: "transfer", isDebit: false }],
+    };
 
-    if (month && year) {
+    if (startDate && endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filter.date = { $gte: new Date(startDate), $lte: end };
+    } else if (month && year) {
       const m = parseInt(month) - 1;
       const y = parseInt(year);
       filter.date = { $gte: new Date(y, m, 1), $lt: new Date(y, m + 1, 1) };
@@ -444,7 +461,7 @@ const createTransfer = async (req, res, next) => {
     const transferDesc =
       description || `Transfer from ${fromAcc.name} to ${toAcc.name}`;
 
-    // Create two linked transactions — debit (from) and credit (to)
+    // Create two linked transactions - debit (from) and credit (to)
     const [debitTx, creditTx] = await Promise.all([
       Transaction.create({
         user: req.user._id,
@@ -454,7 +471,7 @@ const createTransfer = async (req, res, next) => {
         account: fromAccount,
         toAccount: toAccount,
         transferRef,
-        isDebit: true, // this is the FROM side — shown in list
+        isDebit: true, // this is the FROM side - shown in list
         date: transferDate,
         description: transferDesc,
       }),
@@ -466,7 +483,7 @@ const createTransfer = async (req, res, next) => {
         account: toAccount,
         toAccount: fromAccount,
         transferRef,
-        isDebit: false, // this is the TO side — hidden from list
+        isDebit: false, // this is the TO side - hidden from list
         date: transferDate,
         description: transferDesc,
       }),
@@ -523,8 +540,8 @@ const deleteTransfer = async (req, res, next) => {
     const uniqueAccounts = [...new Set(accountIds)];
 
     // Reverse: one account gets +amount, other gets -amount back to original
-    // The debit tx's account loses the amount — so add it back
-    // The credit tx's account gains the amount — so subtract it back
+    // The debit tx's account loses the amount - so add it back
+    // The credit tx's account gains the amount - so subtract it back
     // We identify which is which by toAccount reference
     for (const t of transactions) {
       const isDebit =

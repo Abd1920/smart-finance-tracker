@@ -267,7 +267,7 @@ const Transactions = () => {
               ))}
             </div>
             {meta.pages > 1 && (
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between pt-4 mt-4 mb-16 sm:mb-4 border-t border-gray-100 dark:border-gray-700">
                 <p className="text-sm text-gray-500">
                   Page {filters.page} of {meta.pages}
                 </p>

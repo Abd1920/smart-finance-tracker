@@ -34,6 +34,7 @@ import {
   Legend,
 } from "recharts";
 import toast from "react-hot-toast";
+import ComingSoonBanner from "../../components/shared/ComingSoonBanner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Format date as YYYY-MM-DD without timezone conversion issues
@@ -249,6 +250,9 @@ const Dashboard = () => {
           Here's your financial overview.
         </p>
       </div>
+
+      {/* Coming Soon Banner */}
+      <ComingSoonBanner />
 
       {/* Date Range Filter Bar */}
       <div className="relative">

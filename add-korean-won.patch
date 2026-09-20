@@ -1,0 +1,89 @@
+diff --git a/client/src/pages/settings/Settings.jsx b/client/src/pages/settings/Settings.jsx
+index f2a4c88..0d28662 100644
+--- a/client/src/pages/settings/Settings.jsx
++++ b/client/src/pages/settings/Settings.jsx
+@@ -25,6 +25,7 @@ const CURRENCIES = [
+   { code: "AED", label: "AED - UAE Dirham" },
+   { code: "EUR", label: "EUR - Euro" },
+   { code: "GBP", label: "GBP - British Pound" },
++  { code: "KRW", label: "KRW - South Korean Won" },
+ ];
+ 
+ // ── Delete Account modal ──────────────────────────────────────────────────────
+diff --git a/client/src/utils/currencies.js b/client/src/utils/currencies.js
+index aa71641..070a70a 100644
+--- a/client/src/utils/currencies.js
++++ b/client/src/utils/currencies.js
+@@ -1,4 +1,4 @@
+-export const CURRENCIES = ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP"];
++export const CURRENCIES = ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"];
+ 
+ export const CURRENCY_SYMBOLS = {
+   LKR: "Rs",
+@@ -9,6 +9,7 @@ export const CURRENCY_SYMBOLS = {
+   AED: "AED",
+   EUR: "€",
+   GBP: "£",
++  KRW: "₩",
+ };
+ 
+ export const formatCurrency = (amount, currency = "LKR") => {
+diff --git a/server/models/Account.js b/server/models/Account.js
+index a870e74..b68f275 100644
+--- a/server/models/Account.js
++++ b/server/models/Account.js
+@@ -21,7 +21,7 @@ const accountSchema = new mongoose.Schema(
+     currency: {
+       type: String,
+       required: true,
+-      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP"],
++      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+       default: "LKR",
+       immutable: true, // locked after account creation
+     },
+diff --git a/server/models/Debt.js b/server/models/Debt.js
+index 84e30b9..9382d13 100644
+--- a/server/models/Debt.js
++++ b/server/models/Debt.js
+@@ -27,7 +27,7 @@ const debtSchema = new mongoose.Schema(
+     // currency at creation, or the user's primary currency if no account
+     currency: {
+       type: String,
+-      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP"],
++      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+       default: "LKR",
+     },
+     description: {
+diff --git a/server/models/Transaction.js b/server/models/Transaction.js
+index c3e4a70..682098c 100644
+--- a/server/models/Transaction.js
++++ b/server/models/Transaction.js
+@@ -21,7 +21,7 @@ const transactionSchema = new mongoose.Schema(
+     // at the time the transaction was created (locked, never converted in-place)
+     currency: {
+       type: String,
+-      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP"],
++      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+       default: "LKR",
+     },
+     category: {
+diff --git a/server/utils/exchangeRateService.js b/server/utils/exchangeRateService.js
+index a6314ed..4b4e554 100644
+--- a/server/utils/exchangeRateService.js
++++ b/server/utils/exchangeRateService.js
+@@ -7,6 +7,7 @@ const SUPPORTED_CURRENCIES = [
+   "AED",
+   "EUR",
+   "GBP",
++  "KRW",
+ ];
+ 
+ // Fallback rates used if the live API is unreachable.
+@@ -20,6 +21,7 @@ const FALLBACK_RATES = {
+   AED: 89.45,
+   EUR: 356.2,
+   GBP: 417.8,
++  KRW: 0.222,
+ };
+ 
+ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour

@@ -1,0 +1,170 @@
+diff --git a/client/src/components/debts/DebtForm.jsx b/client/src/components/debts/DebtForm.jsx
+index 3afc6d1..0f995c4 100644
+--- a/client/src/components/debts/DebtForm.jsx
++++ b/client/src/components/debts/DebtForm.jsx
+@@ -130,7 +130,7 @@ const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
+             Amount{" "}
+             {selectedLinkedAccount && (
+               <span className="text-gray-400 font-normal">
+-                ({selectedLinkedAccount.currency})
++                ({selectedLinkedAccount.currency || "LKR"})
+               </span>
+             )}
+           </label>
+diff --git a/client/src/components/debts/SettleDebtModal.jsx b/client/src/components/debts/SettleDebtModal.jsx
+index ab7d886..1473a00 100644
+--- a/client/src/components/debts/SettleDebtModal.jsx
++++ b/client/src/components/debts/SettleDebtModal.jsx
+@@ -17,16 +17,18 @@ const SettleDebtModal = ({
+   const [settlementAccount, setSettlementAccount] = useState("");
+ 
+   const isPay = debt?.debtType === "to_pay";
+-  const debtCurrency = debt?.currency || currency;
++  const debtCurrency = debt?.currency || "LKR";
+ 
+   const selectedAccount = accounts?.find((a) => a._id === settlementAccount);
+-  const isCrossCurrency =
+-    selectedAccount && selectedAccount.currency !== debtCurrency;
++  // Accounts created before multi-currency support have no `currency`
++  // stored yet - treat missing as LKR rather than a mismatch.
++  const settlementCurrency = selectedAccount?.currency || "LKR";
++  const isCrossCurrency = selectedAccount && settlementCurrency !== debtCurrency;
+ 
+   let settleAmount = debt?.amount;
+   if (isCrossCurrency && exchangeRates) {
+     const fromRate = exchangeRates[debtCurrency];
+-    const toRate = exchangeRates[selectedAccount.currency];
++    const toRate = exchangeRates[settlementCurrency];
+     if (fromRate && toRate) {
+       settleAmount = (debt.amount * fromRate) / toRate;
+     }
+@@ -83,8 +85,8 @@ const SettleDebtModal = ({
+               className={`text-xs mt-1 ${isPay ? "text-red-500" : "text-green-600"}`}
+             >
+               {isPay
+-                ? `✓ Account balance will decrease by ${formatCurrency(settleAmount, selectedAccount.currency)}`
+-                : `✓ Account balance will increase by ${formatCurrency(settleAmount, selectedAccount.currency)}`}
++                ? `✓ Account balance will decrease by ${formatCurrency(settleAmount, settlementCurrency)}`
++                : `✓ Account balance will increase by ${formatCurrency(settleAmount, settlementCurrency)}`}
+               {isCrossCurrency && (
+                 <>
+                   {" "}
+diff --git a/client/src/components/transactions/TransferForm.jsx b/client/src/components/transactions/TransferForm.jsx
+index 190cbe6..44e68c3 100644
+--- a/client/src/components/transactions/TransferForm.jsx
++++ b/client/src/components/transactions/TransferForm.jsx
+@@ -68,13 +68,18 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
+   const fmt = (v) =>
+     Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+ 
++  // Accounts created before multi-currency support have no `currency`
++  // stored yet - treat missing as LKR rather than a mismatch.
++  const fromCurrency = fromAccount?.currency || "LKR";
++  const toCurrency = toAccount?.currency || "LKR";
++
+   const isCrossCurrency =
+-    fromAccount && toAccount && fromAccount.currency !== toAccount.currency;
++    fromAccount && toAccount && fromCurrency !== toCurrency;
+ 
+   let receivedAmount = null;
+   if (isCrossCurrency && form.amount && exchangeRates) {
+-    const fromRate = exchangeRates[fromAccount.currency];
+-    const toRate = exchangeRates[toAccount.currency];
++    const fromRate = exchangeRates[fromCurrency];
++    const toRate = exchangeRates[toCurrency];
+     if (fromRate && toRate) {
+       receivedAmount = (Number(form.amount) * fromRate) / toRate;
+     }
+@@ -112,15 +117,15 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
+               <MdArrowForward size={20} className="text-primary-500" />
+               <p className="text-sm font-bold text-primary-600 mt-1">
+                 {Number(form.amount) > 0
+-                  ? formatCurrency(form.amount, fromAccount.currency)
++                  ? formatCurrency(form.amount, fromCurrency)
+                   : "-"}
+               </p>
+               {isCrossCurrency && (
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                   ≈{" "}
+                   {receivedAmount !== null
+-                    ? formatCurrency(receivedAmount, toAccount.currency)
+-                    : `? ${toAccount.currency}`}{" "}
++                    ? formatCurrency(receivedAmount, toCurrency)
++                    : `? ${toCurrency}`}{" "}
+                   received
+                 </p>
+               )}
+@@ -227,7 +232,7 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
+             Amount{" "}
+             {fromAccount && (
+               <span className="text-gray-400 font-normal">
+-                ({fromAccount.currency})
++                ({fromCurrency})
+               </span>
+             )}
+           </label>
+diff --git a/server/controllers/transactionController.js b/server/controllers/transactionController.js
+index 4fdfeff..0fea1e8 100644
+--- a/server/controllers/transactionController.js
++++ b/server/controllers/transactionController.js
+@@ -471,10 +471,14 @@ const createTransfer = async (req, res, next) => {
+     // Cross-currency: convert the amount into the destination account's
+     // currency so the credit side reflects what actually lands there.
+     // Each linked transaction stores its own amount in its own currency.
++    // Accounts created before multi-currency support have no `currency`
++    // stored yet, so normalize missing values to LKR before comparing.
++    const fromCurrency = fromAcc.currency || "LKR";
++    const toCurrency = toAcc.currency || "LKR";
+     let receivedAmount = parsedAmount;
+-    if (fromAcc.currency !== toAcc.currency) {
++    if (fromCurrency !== toCurrency) {
+       const { rates } = await getExchangeRates();
+-      receivedAmount = convert(parsedAmount, fromAcc.currency, toAcc.currency, rates);
++      receivedAmount = convert(parsedAmount, fromCurrency, toCurrency, rates);
+     }
+ 
+     // Create two linked transactions - debit (from) and credit (to)
+@@ -483,7 +487,7 @@ const createTransfer = async (req, res, next) => {
+         user: req.user._id,
+         type: "transfer",
+         amount: parsedAmount,
+-        currency: fromAcc.currency,
++        currency: fromCurrency,
+         category: "Transfer",
+         account: fromAccount,
+         toAccount: toAccount,
+@@ -496,7 +500,7 @@ const createTransfer = async (req, res, next) => {
+         user: req.user._id,
+         type: "transfer",
+         amount: receivedAmount,
+-        currency: toAcc.currency,
++        currency: toCurrency,
+         category: "Transfer",
+         account: toAccount,
+         toAccount: fromAccount,
+diff --git a/server/utils/exchangeRateService.js b/server/utils/exchangeRateService.js
+index 7c6bbfb..a6314ed 100644
+--- a/server/utils/exchangeRateService.js
++++ b/server/utils/exchangeRateService.js
+@@ -86,12 +86,17 @@ async function getExchangeRates() {
+ }
+ 
+ // amount * rates[from] / rates[to]
++// Legacy accounts/transactions/debts created before multi-currency support
++// don't have a `currency` field in the database, so it reads as undefined.
++// Treat that as LKR (the app's original, only currency) rather than crashing.
+ function convert(amount, fromCurrency, toCurrency, rates) {
+-  if (fromCurrency === toCurrency) return amount;
+-  const fromRate = rates[fromCurrency];
+-  const toRate = rates[toCurrency];
++  const from = fromCurrency || "LKR";
++  const to = toCurrency || "LKR";
++  if (from === to) return amount;
++  const fromRate = rates[from];
++  const toRate = rates[to];
+   if (!fromRate || !toRate) {
+-    throw new Error(`Missing exchange rate for ${fromCurrency} or ${toCurrency}`);
++    throw new Error(`Missing exchange rate for ${from} or ${to}`);
+   }
+   return (amount * fromRate) / toRate;
+ }

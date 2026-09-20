@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Modal from "../shared/Modal";
+import { CURRENCIES } from "../../utils/currencies";
 
 const ACCOUNT_TYPES = [
   { value: "bank", label: "Bank Account" },
@@ -26,6 +27,7 @@ const AccountForm = ({ isOpen, onClose, onSubmit, account, isLoading }) => {
   const [form, setForm] = useState({
     name: "",
     type: "bank",
+    currency: "LKR",
     initialBalance: "",
     color: "#3b82f6",
   });
@@ -37,11 +39,18 @@ const AccountForm = ({ isOpen, onClose, onSubmit, account, isLoading }) => {
       setForm({
         name: account.name || "",
         type: account.type || "bank",
+        currency: account.currency || "LKR",
         initialBalance: account.initialBalance ?? "",
         color: account.color || "#3b82f6",
       });
     } else {
-      setForm({ name: "", type: "bank", initialBalance: "", color: "#3b82f6" });
+      setForm({
+        name: "",
+        type: "bank",
+        currency: "LKR",
+        initialBalance: "",
+        color: "#3b82f6",
+      });
     }
     setErrors({});
   }, [account, isOpen]);
@@ -108,6 +117,29 @@ const AccountForm = ({ isOpen, onClose, onSubmit, account, isLoading }) => {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Currency — locked after creation, so only editable when adding */}
+        <div>
+          <label className="label">Currency</label>
+          {isEdit ? (
+            <div className="input bg-gray-50 dark:bg-gray-800 text-gray-500 cursor-not-allowed">
+              {form.currency} (locked after creation)
+            </div>
+          ) : (
+            <select
+              name="currency"
+              value={form.currency}
+              onChange={handleChange}
+              className="input"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Initial Balance — only show when creating, not editing */}

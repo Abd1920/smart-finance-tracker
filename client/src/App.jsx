@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ExchangeRateProvider } from "./context/ExchangeRateContext";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import GuestRoute from "./components/auth/GuestRoute";
@@ -62,7 +63,9 @@ function App() {
               <Route
                 element={
                   <NotificationProvider>
-                    <AppLayout />
+                    <ExchangeRateProvider>
+                      <AppLayout />
+                    </ExchangeRateProvider>
                   </NotificationProvider>
                 }
               >

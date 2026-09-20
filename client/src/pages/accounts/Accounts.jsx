@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useExchangeRates } from "../../context/ExchangeRateContext";
 import accountService from "../../services/accountService";
 import transactionService from "../../services/transactionService";
 import AccountCard from "../../components/accounts/AccountCard";
@@ -10,6 +11,7 @@ import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
 import SummaryCard from "../../components/shared/SummaryCard";
 import Modal from "../../components/shared/Modal";
+import { formatCurrency } from "../../utils/currencies";
 import {
   MdAdd,
   MdAccountBalance,
@@ -21,6 +23,7 @@ import toast from "react-hot-toast";
 
 const Accounts = () => {
   const { user } = useAuth();
+  const { rates: exchangeRates } = useExchangeRates();
   const currency = user?.currency || "LKR";
 
   const [accounts, setAccounts] = useState([]);
@@ -113,7 +116,7 @@ const Accounts = () => {
     setResetting(true);
     try {
       await accountService.resetBalance(resetTarget._id, val);
-      toast.success(`Balance reset to ${currency} ${val.toLocaleString()}`);
+      toast.success(`Balance reset to ${formatCurrency(val, resetTarget.currency)}`);
       setResetTarget(null);
       setResetValue("");
       fetchAccounts();
@@ -137,6 +140,30 @@ const Accounts = () => {
       setTransferring(false);
     }
   };
+
+  // Compare accounts fairly across currencies by converting each balance
+  // into the primary currency before finding the highest.
+  const convertToPrimary = (acc) => {
+    const accCurrency = acc.currency || "LKR";
+    if (!exchangeRates || accCurrency === currency) return acc.currentBalance;
+    const fromRate = exchangeRates[accCurrency];
+    const toRate = exchangeRates[currency];
+    if (!fromRate || !toRate) return acc.currentBalance;
+    return (acc.currentBalance * fromRate) / toRate;
+  };
+
+  const highestBalanceInfo =
+    accounts.length > 0
+      ? accounts.reduce(
+          (best, acc) => {
+            const converted = convertToPrimary(acc);
+            return converted > best.amount
+              ? { amount: converted, name: acc.name }
+              : best;
+          },
+          { amount: -Infinity, name: "" },
+        )
+      : { amount: 0, name: "" };
 
   if (loading) return <Spinner size="lg" className="h-64" />;
 
@@ -183,15 +210,11 @@ const Accounts = () => {
           />
           <SummaryCard
             title="Highest Balance"
-            amount={Math.max(...accounts.map((a) => a.currentBalance))}
+            amount={highestBalanceInfo.amount}
             icon={MdTrendingUp}
             color="green"
             currency={currency}
-            subtitle={
-              accounts.reduce((a, b) =>
-                a.currentBalance > b.currentBalance ? a : b,
-              ).name
-            }
+            subtitle={highestBalanceInfo.name}
           />
         </div>
       )}
@@ -219,7 +242,8 @@ const Accounts = () => {
             <AccountCard
               key={acc._id}
               account={acc}
-              currency={currency}
+              primaryCurrency={currency}
+              exchangeRates={exchangeRates}
               onEdit={handleOpenEdit}
               onDelete={setDeleteTarget}
               onReset={(acc) => {
@@ -279,7 +303,7 @@ const Accounts = () => {
             balances caused by deleted transactions.
           </p>
           <div>
-            <label className="label">Correct Balance ({currency})</label>
+            <label className="label">Correct Balance ({resetTarget?.currency || currency})</label>
             <input
               type="number"
               step="0.01"

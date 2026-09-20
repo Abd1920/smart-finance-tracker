@@ -1,6 +1,15 @@
 const Debt = require("../models/Debt");
 const Account = require("../models/Account");
 const Transaction = require("../models/Transaction");
+const { getExchangeRates, convert } = require("../utils/exchangeRateService");
+
+const toPrimary = (amount, fromCurrency, primaryCurrency, rates) => {
+  try {
+    return convert(amount, fromCurrency || "LKR", primaryCurrency, rates);
+  } catch {
+    return amount;
+  }
+};
 
 const adjustBalance = async (accountId, amount, direction) => {
   if (!accountId) return;
@@ -16,6 +25,7 @@ const createDebtTransaction = async ({
   accountId,
   type,
   amount,
+  currency,
   description,
   category,
 }) => {
@@ -24,6 +34,7 @@ const createDebtTransaction = async ({
     user: userId,
     type,
     amount,
+    currency,
     category,
     account: accountId,
     description,
@@ -42,22 +53,26 @@ const getDebts = async (req, res, next) => {
     if (status) filter.status = status;
 
     const debts = await Debt.find(filter)
-      .populate("linkedAccount", "name type color")
-      .populate("settlementAccount", "name type color")
+      .populate("linkedAccount", "name type color currency")
+      .populate("settlementAccount", "name type color currency")
       .sort({ createdAt: -1 });
+
+    const primaryCurrency = req.user.currency || "LKR";
+    const { rates } = await getExchangeRates();
 
     const totalToPay = debts
       .filter((d) => d.debtType === "to_pay" && d.status === "pending")
-      .reduce((s, d) => s + d.amount, 0);
+      .reduce((s, d) => s + toPrimary(d.amount, d.currency, primaryCurrency, rates), 0);
     const totalToReceive = debts
       .filter((d) => d.debtType === "to_receive" && d.status === "pending")
-      .reduce((s, d) => s + d.amount, 0);
+      .reduce((s, d) => s + toPrimary(d.amount, d.currency, primaryCurrency, rates), 0);
 
     res.status(200).json({
       success: true,
       count: debts.length,
       totalToPay,
       totalToReceive,
+      primaryCurrency,
       debts,
     });
   } catch (error) {
@@ -85,13 +100,14 @@ const createDebt = async (req, res, next) => {
       });
     }
 
+    let linkedAccountDoc = null;
     if (linkedAccount) {
-      const acc = await Account.findOne({
+      linkedAccountDoc = await Account.findOne({
         _id: linkedAccount,
         user: req.user._id,
         isActive: true,
       });
-      if (!acc)
+      if (!linkedAccountDoc)
         return res
           .status(404)
           .json({ success: false, message: "Account not found" });
@@ -104,6 +120,7 @@ const createDebt = async (req, res, next) => {
       debtType,
       personName,
       amount: parsedAmount,
+      currency: linkedAccountDoc ? linkedAccountDoc.currency : (req.user.currency || "LKR"),
       description: description || "",
       dueDate: dueDate || null,
       linkedAccount: linkedAccount || null,
@@ -119,6 +136,7 @@ const createDebt = async (req, res, next) => {
           accountId: linkedAccount,
           type: "income",
           amount: parsedAmount,
+          currency: linkedAccountDoc.currency,
           category: "Other",
           description: description
             ? `Borrowed from ${personName} - ${description}`
@@ -132,6 +150,7 @@ const createDebt = async (req, res, next) => {
           accountId: linkedAccount,
           type: "expense",
           amount: parsedAmount,
+          currency: linkedAccountDoc.currency,
           category: "Other",
           description: description
             ? `Lent to ${personName} - ${description}`
@@ -204,14 +223,24 @@ const settleDebt = async (req, res, next) => {
 
         debt.settlementAccount = settlementAccount;
 
+        // Convert the debt amount into the settlement account's own
+        // currency if it differs from the debt's currency.
+        let settleAmount = debt.amount;
+        if (acc.currency !== debt.currency) {
+          const { rates } = await getExchangeRates();
+          settleAmount = convert(debt.amount, debt.currency, acc.currency, rates);
+        }
+        debt.settlementAppliedAmount = settleAmount;
+
         if (debt.debtType === "to_pay") {
           // Repaying → account decreases + Expense transaction
-          await adjustBalance(settlementAccount, debt.amount, "subtract");
+          await adjustBalance(settlementAccount, settleAmount, "subtract");
           await createDebtTransaction({
             userId: req.user._id,
             accountId: settlementAccount,
             type: "expense",
-            amount: debt.amount,
+            amount: settleAmount,
+            currency: acc.currency,
             category: "Other",
             description: debt.description
               ? `Repaid to ${debt.personName} - ${debt.description}`
@@ -219,12 +248,13 @@ const settleDebt = async (req, res, next) => {
           });
         } else {
           // Received repayment → account increases + Income transaction
-          await adjustBalance(settlementAccount, debt.amount, "add");
+          await adjustBalance(settlementAccount, settleAmount, "add");
           await createDebtTransaction({
             userId: req.user._id,
             accountId: settlementAccount,
             type: "income",
-            amount: debt.amount,
+            amount: settleAmount,
+            currency: acc.currency,
             category: "Other",
             description: debt.description
               ? `Received from ${debt.personName} - ${debt.description}`
@@ -237,14 +267,18 @@ const settleDebt = async (req, res, next) => {
       debt.settledAt = new Date();
     } else {
       // === UN-SETTLING ===
-      // Reverse settlement account effect only
+      // Reverse settlement account effect only, using the amount actually
+      // applied at settlement time (may differ from debt.amount if the
+      // settlement account's currency differed from the debt's)
       if (debt.settlementAccount) {
+        const appliedAmount = debt.settlementAppliedAmount ?? debt.amount;
         if (debt.debtType === "to_pay") {
-          await adjustBalance(debt.settlementAccount, debt.amount, "add");
+          await adjustBalance(debt.settlementAccount, appliedAmount, "add");
         } else {
-          await adjustBalance(debt.settlementAccount, debt.amount, "subtract");
+          await adjustBalance(debt.settlementAccount, appliedAmount, "subtract");
         }
         debt.settlementAccount = null;
+        debt.settlementAppliedAmount = null;
       }
       debt.status = "pending";
       debt.settledAt = null;

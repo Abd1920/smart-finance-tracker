@@ -23,6 +23,13 @@ const debtSchema = new mongoose.Schema(
       required: [true, "Amount is required"],
       min: [0.01, "Amount must be greater than 0"],
     },
+    // Currency the amount is recorded in — taken from the linked account's
+    // currency at creation, or the user's primary currency if no account
+    currency: {
+      type: String,
+      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+      default: "LKR",
+    },
     description: {
       type: String,
       trim: true,
@@ -57,6 +64,14 @@ const debtSchema = new mongoose.Schema(
     accountAdjusted: {
       type: Boolean,
       default: false,
+    },
+    // Amount actually applied to settlementAccount's balance, in that
+    // account's own currency (may differ from `amount` if settlementAccount
+    // uses a different currency than the debt). Needed to reverse correctly
+    // if the debt is un-settled.
+    settlementAppliedAmount: {
+      type: Number,
+      default: null,
     },
   },
   { timestamps: true },

@@ -6,6 +6,7 @@ import {
   MdSwapHoriz,
 } from "react-icons/md";
 import { CATEGORY_COLORS } from "../../utils/categories";
+import { formatCurrency } from "../../utils/currencies";
 
 const TransactionRow = ({
   transaction,
@@ -20,8 +21,9 @@ const TransactionRow = ({
     ? "#8b5cf6"
     : CATEGORY_COLORS[transaction.category] || "#94a3b8";
 
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+  // A transaction is always recorded in its own account's currency
+  const txCurrency =
+    transaction.currency || transaction.account?.currency || currency;
 
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString("en-LK", {
@@ -115,8 +117,7 @@ const TransactionRow = ({
                 : "text-red-500 dark:text-red-400"
           }`}
         >
-          {isTransfer ? "⇄" : isIncome ? "+" : "-"} {currency}{" "}
-          {fmt(transaction.amount)}
+          {isTransfer ? "⇄" : isIncome ? "+" : "-"} {formatCurrency(transaction.amount, txCurrency)}
         </span>
 
         {/* Actions */}

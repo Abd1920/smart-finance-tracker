@@ -25,6 +25,7 @@ const CURRENCIES = [
   { code: "AED", label: "AED - UAE Dirham" },
   { code: "EUR", label: "EUR - Euro" },
   { code: "GBP", label: "GBP - British Pound" },
+  { code: "KRW", label: "KRW - South Korean Won" },
 ];
 
 // ── Delete Account modal ──────────────────────────────────────────────────────

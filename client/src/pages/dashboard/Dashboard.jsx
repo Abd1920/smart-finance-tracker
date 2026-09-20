@@ -20,6 +20,7 @@ import {
   MdClose,
 } from "react-icons/md";
 import { CATEGORY_COLORS } from "../../utils/categories";
+import { formatCurrency } from "../../utils/currencies";
 import {
   ResponsiveContainer,
   BarChart,
@@ -34,7 +35,6 @@ import {
   Legend,
 } from "recharts";
 import toast from "react-hot-toast";
-import ComingSoonBanner from "../../components/shared/ComingSoonBanner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Format date as YYYY-MM-DD without timezone conversion issues
@@ -250,9 +250,6 @@ const Dashboard = () => {
           Here's your financial overview.
         </p>
       </div>
-
-      {/* Coming Soon Banner */}
-      <ComingSoonBanner />
 
       {/* Date Range Filter Bar */}
       <div className="relative">
@@ -605,8 +602,8 @@ const Dashboard = () => {
                 <span
                   className={`text-sm font-semibold flex-shrink-0 ${tx.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}
                 >
-                  {tx.type === "income" ? "+" : "-"} {currency}{" "}
-                  {fmtNum(tx.amount)}
+                  {tx.type === "income" ? "+" : "-"}{" "}
+                  {formatCurrency(tx.amount, tx.currency)}
                 </span>
               </div>
             ))}

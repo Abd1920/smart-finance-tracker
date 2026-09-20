@@ -10,6 +10,7 @@ import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
 import SummaryCard from "../../components/shared/SummaryCard";
+import { formatCurrency } from "../../utils/currencies";
 import {
   MdAdd,
   MdReceiptLong,
@@ -323,7 +324,7 @@ const Transactions = () => {
         onClose={() => setDeleteTx(null)}
         onConfirm={handleDelete}
         title="Delete Transaction"
-        message={`Delete this ${deleteTx?.type} of ${currency} ${deleteTx ? Number(deleteTx.amount).toLocaleString() : ""}? The account balance will be reversed automatically.`}
+        message={`Delete this ${deleteTx?.type} of ${deleteTx ? formatCurrency(deleteTx.amount, deleteTx.currency) : ""}? The account balance will be reversed automatically.`}
         isLoading={deleting}
       />
 
@@ -332,7 +333,7 @@ const Transactions = () => {
         onClose={() => setDeleteTransferTx(null)}
         onConfirm={handleDeleteTransfer}
         title="Delete Transfer"
-        message={`Delete this transfer of ${currency} ${deleteTransferTx ? Number(deleteTransferTx.amount).toLocaleString() : ""}? Both account balances will be reversed automatically.`}
+        message={`Delete this transfer of ${deleteTransferTx ? formatCurrency(deleteTransferTx.amount, deleteTransferTx.currency) : ""}? Both account balances will be reversed automatically.`}
         isLoading={deleting}
       />
     </div>

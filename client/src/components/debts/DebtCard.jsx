@@ -8,13 +8,13 @@ import {
   MdAccountBalance,
   MdSwapHoriz,
 } from "react-icons/md";
+import { formatCurrency } from "../../utils/currencies";
 
 const DebtCard = ({ debt, currency, onEdit, onDelete, onSettle }) => {
   const isPay = debt.debtType === "to_pay";
   const isSettled = debt.status === "settled";
+  const debtCurrency = debt.currency || currency;
 
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString("en-LK", {
       day: "numeric",
@@ -101,7 +101,7 @@ const DebtCard = ({ debt, currency, onEdit, onDelete, onSettle }) => {
             : "text-green-600 dark:text-green-400"
         } ${isSettled ? "line-through" : ""}`}
       >
-        {currency} {fmt(debt.amount)}
+        {formatCurrency(debt.amount, debtCurrency)}
       </p>
 
       {/* Description */}

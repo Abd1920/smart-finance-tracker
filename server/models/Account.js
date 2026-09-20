@@ -18,6 +18,13 @@ const accountSchema = new mongoose.Schema(
       required: [true, "Account type is required"],
       enum: ["bank", "cash", "credit_card", "savings", "wallet"],
     },
+    currency: {
+      type: String,
+      required: true,
+      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+      default: "LKR",
+      immutable: true, // locked after account creation
+    },
     initialBalance: {
       type: Number,
       required: [true, "Initial balance is required"],

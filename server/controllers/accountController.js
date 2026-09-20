@@ -1,4 +1,5 @@
 const Account = require("../models/Account");
+const { getExchangeRates, convert } = require("../utils/exchangeRateService");
 
 // @desc    Get all accounts for logged-in user
 // @route   GET /api/accounts
@@ -10,15 +11,23 @@ const getAccounts = async (req, res, next) => {
       isActive: true,
     }).sort({ createdAt: -1 });
 
-    const totalBalance = accounts.reduce(
-      (sum, acc) => sum + acc.currentBalance,
-      0,
-    );
+    const primaryCurrency = req.user.currency || "LKR";
+    const { rates } = await getExchangeRates();
+
+    const totalBalance = accounts.reduce((sum, acc) => {
+      try {
+        return sum + convert(acc.currentBalance, acc.currency, primaryCurrency, rates);
+      } catch {
+        // Missing rate for this account's currency - fall back to raw amount
+        return sum + acc.currentBalance;
+      }
+    }, 0);
 
     res.status(200).json({
       success: true,
       count: accounts.length,
       totalBalance,
+      primaryCurrency,
       accounts,
     });
   } catch (error) {
@@ -53,7 +62,7 @@ const getAccount = async (req, res, next) => {
 // @access  Private
 const createAccount = async (req, res, next) => {
   try {
-    const { name, type, initialBalance, color, icon } = req.body;
+    const { name, type, currency, initialBalance, color, icon } = req.body;
 
     if (!name || !type) {
       return res
@@ -65,6 +74,7 @@ const createAccount = async (req, res, next) => {
       user: req.user._id,
       name,
       type,
+      currency: currency || "LKR",
       initialBalance: initialBalance || 0,
       color: color || "#3b82f6",
       icon: icon || "bank",

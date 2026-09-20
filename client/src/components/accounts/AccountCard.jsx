@@ -8,6 +8,7 @@ import {
   MdRefresh,
 } from "react-icons/md";
 import { FaMoneyBillWave } from "react-icons/fa";
+import { formatCurrency } from "../../utils/currencies";
 
 const typeConfig = {
   bank: { label: "Bank Account", Icon: MdAccountBalance },
@@ -22,15 +23,26 @@ const AccountCard = ({
   onEdit,
   onDelete,
   onReset,
-  currency = "LKR",
+  primaryCurrency = "LKR",
+  exchangeRates = null,
 }) => {
   const config = typeConfig[account.type] || typeConfig.bank;
   const { Icon, label } = config;
 
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
-
+  const accountCurrency = account.currency || "LKR";
   const isNegative = account.currentBalance < 0;
+
+  // Convert the account's own balance into the primary currency, when the
+  // account uses a different currency and we have live/fallback rates.
+  const showConverted = exchangeRates && accountCurrency !== primaryCurrency;
+  let convertedBalance = null;
+  if (showConverted) {
+    const fromRate = exchangeRates[accountCurrency];
+    const toRate = exchangeRates[primaryCurrency];
+    if (fromRate && toRate) {
+      convertedBalance = (account.currentBalance * fromRate) / toRate;
+    }
+  }
 
   return (
     <div className="card hover:shadow-md transition-shadow">
@@ -76,11 +88,16 @@ const AccountCard = ({
         <p
           className={`text-xl font-bold ${isNegative ? "text-red-500" : "text-gray-800 dark:text-gray-100"}`}
         >
-          {currency} {fmt(account.currentBalance)}
+          {formatCurrency(account.currentBalance, accountCurrency)}
         </p>
+        {convertedBalance !== null && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            ≈ {formatCurrency(convertedBalance, primaryCurrency)}
+          </p>
+        )}
         {account.initialBalance !== account.currentBalance && (
           <p className="text-xs text-gray-400 mt-1">
-            Opening: {currency} {fmt(account.initialBalance)}
+            Opening: {formatCurrency(account.initialBalance, accountCurrency)}
           </p>
         )}
       </div>

@@ -48,6 +48,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/accounts", require("./routes/accounts"));
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/debts", require("./routes/debts"));
+app.use("/api/exchange-rates", require("./routes/exchangeRates"));
 
 // Feedback route - MUST be before the 404 handler
 app.post("/api/feedback", async (req, res, next) => {

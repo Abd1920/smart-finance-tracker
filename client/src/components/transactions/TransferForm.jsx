@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import Modal from "../shared/Modal";
 import { MdSwapHoriz, MdArrowForward } from "react-icons/md";
+import { useExchangeRates } from "../../context/ExchangeRateContext";
+import { formatCurrency } from "../../utils/currencies";
 
 const today = () => new Date().toISOString().split("T")[0];
 
 const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
+  const { rates: exchangeRates } = useExchangeRates();
   const [form, setForm] = useState({
     fromAccount: "",
     toAccount: "",
@@ -65,6 +68,23 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
   const fmt = (v) =>
     Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
 
+  // Accounts created before multi-currency support have no `currency`
+  // stored yet - treat missing as LKR rather than a mismatch.
+  const fromCurrency = fromAccount?.currency || "LKR";
+  const toCurrency = toAccount?.currency || "LKR";
+
+  const isCrossCurrency =
+    fromAccount && toAccount && fromCurrency !== toCurrency;
+
+  let receivedAmount = null;
+  if (isCrossCurrency && form.amount && exchangeRates) {
+    const fromRate = exchangeRates[fromCurrency];
+    const toRate = exchangeRates[toCurrency];
+    if (fromRate && toRate) {
+      receivedAmount = (Number(form.amount) * fromRate) / toRate;
+    }
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Transfer Money">
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -96,8 +116,19 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
             <div className="flex flex-col items-center">
               <MdArrowForward size={20} className="text-primary-500" />
               <p className="text-sm font-bold text-primary-600 mt-1">
-                {Number(form.amount) > 0 ? fmt(form.amount) : "-"}
+                {Number(form.amount) > 0
+                  ? formatCurrency(form.amount, fromCurrency)
+                  : "-"}
               </p>
+              {isCrossCurrency && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  ≈{" "}
+                  {receivedAmount !== null
+                    ? formatCurrency(receivedAmount, toCurrency)
+                    : `? ${toCurrency}`}{" "}
+                  received
+                </p>
+              )}
             </div>
 
             <div className="text-center">
@@ -140,7 +171,7 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
                 value={a._id}
                 disabled={a._id === form.toAccount}
               >
-                {a.name} - LKR {fmt(a.currentBalance)}
+                {a.name} - {formatCurrency(a.currentBalance, a.currency)}
               </option>
             ))}
           </select>
@@ -186,7 +217,7 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
                 value={a._id}
                 disabled={a._id === form.fromAccount}
               >
-                {a.name} - LKR {fmt(a.currentBalance)}
+                {a.name} - {formatCurrency(a.currentBalance, a.currency)}
               </option>
             ))}
           </select>
@@ -197,7 +228,14 @@ const TransferForm = ({ isOpen, onClose, onSubmit, accounts, isLoading }) => {
 
         {/* Amount */}
         <div>
-          <label className="label">Amount</label>
+          <label className="label">
+            Amount{" "}
+            {fromAccount && (
+              <span className="text-gray-400 font-normal">
+                ({fromCurrency})
+              </span>
+            )}
+          </label>
           <input
             name="amount"
             type="number"

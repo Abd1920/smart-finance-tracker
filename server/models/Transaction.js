@@ -17,6 +17,13 @@ const transactionSchema = new mongoose.Schema(
       required: [true, "Amount is required"],
       min: [0.01, "Amount must be greater than 0"],
     },
+    // Currency the amount is recorded in — always the account's own currency
+    // at the time the transaction was created (locked, never converted in-place)
+    currency: {
+      type: String,
+      enum: ["LKR", "QAR", "USD", "SAR", "INR", "AED", "EUR", "GBP", "KRW"],
+      default: "LKR",
+    },
     category: {
       type: String,
       required: [true, "Category is required"],

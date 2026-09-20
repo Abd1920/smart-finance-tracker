@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useExchangeRates } from "../../context/ExchangeRateContext";
 import transactionService from "../../services/transactionService";
 import accountService from "../../services/accountService";
 import Spinner from "../../components/shared/Spinner";
 import SummaryCard from "../../components/shared/SummaryCard";
+import { formatCurrency } from "../../utils/currencies";
 import {
   MdTrendingUp,
   MdTrendingDown,
@@ -47,6 +49,7 @@ const MONTHS = [
 
 const Reports = () => {
   const { user } = useAuth();
+  const { rates: exchangeRates } = useExchangeRates();
   const currency = user?.currency || "LKR";
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -458,14 +461,27 @@ const Reports = () => {
               </h3>
               <div className="space-y-3">
                 {accounts.map((acc) => {
-                  const total = accounts.reduce(
-                    (s, a) => s + Math.max(a.currentBalance, 0),
-                    0,
-                  );
+                  const accCurrency = acc.currency || "LKR";
+                  let convertedBalance = acc.currentBalance;
+                  if (exchangeRates && accCurrency !== currency) {
+                    const fromRate = exchangeRates[accCurrency];
+                    const toRate = exchangeRates[currency];
+                    if (fromRate && toRate) {
+                      convertedBalance = (acc.currentBalance * fromRate) / toRate;
+                    }
+                  }
+                  const total = accounts.reduce((s, a) => {
+                    const aCurrency = a.currency || "LKR";
+                    let bal = a.currentBalance;
+                    if (exchangeRates && aCurrency !== currency) {
+                      const fromRate = exchangeRates[aCurrency];
+                      const toRate = exchangeRates[currency];
+                      if (fromRate && toRate) bal = (a.currentBalance * fromRate) / toRate;
+                    }
+                    return s + Math.max(bal, 0);
+                  }, 0);
                   const pct =
-                    total > 0
-                      ? (Math.max(acc.currentBalance, 0) / total) * 100
-                      : 0;
+                    total > 0 ? (Math.max(convertedBalance, 0) / total) * 100 : 0;
                   return (
                     <div key={acc._id}>
                       <div className="flex items-center justify-between mb-1">
@@ -473,7 +489,12 @@ const Reports = () => {
                           {acc.name}
                         </span>
                         <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          {currency} {fmt(acc.currentBalance)}
+                          {formatCurrency(acc.currentBalance, accCurrency)}
+                          {accCurrency !== currency && (
+                            <span className="text-xs text-gray-400 font-normal ml-1">
+                              (≈ {formatCurrency(convertedBalance, currency)})
+                            </span>
+                          )}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">

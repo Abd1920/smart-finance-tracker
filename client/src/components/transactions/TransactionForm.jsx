@@ -39,6 +39,8 @@ const TransactionForm = ({ isOpen, onClose, onSubmit, transaction, accounts, isL
   }, [transaction, isOpen, accounts]);
 
   const categories = form.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const selectedAccount = accounts?.find((a) => a._id === form.account);
+  const selectedCurrency = selectedAccount?.currency || 'LKR';
 
   const validate = () => {
     const e = {};
@@ -98,9 +100,26 @@ const TransactionForm = ({ isOpen, onClose, onSubmit, transaction, accounts, isL
           </div>
         </div>
 
+        {/* Account */}
+        <div>
+          <label className="label">Account</label>
+          <select
+            name="account"
+            value={form.account}
+            onChange={handleChange}
+            className={`input ${errors.account ? 'border-red-400' : ''}`}
+          >
+            <option value="">Select account</option>
+            {accounts?.map((a) => (
+              <option key={a._id} value={a._id}>{a.name} ({a.currency || 'LKR'})</option>
+            ))}
+          </select>
+          {errors.account && <p className="text-red-500 text-xs mt-1">{errors.account}</p>}
+        </div>
+
         {/* Amount */}
         <div>
-          <label className="label">Amount</label>
+          <label className="label">Amount {selectedAccount && <span className="text-gray-400 font-normal">({selectedCurrency})</span>}</label>
           <input
             name="amount"
             type="number"
@@ -129,23 +148,6 @@ const TransactionForm = ({ isOpen, onClose, onSubmit, transaction, accounts, isL
             ))}
           </select>
           {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
-        </div>
-
-        {/* Account */}
-        <div>
-          <label className="label">Account</label>
-          <select
-            name="account"
-            value={form.account}
-            onChange={handleChange}
-            className={`input ${errors.account ? 'border-red-400' : ''}`}
-          >
-            <option value="">Select account</option>
-            {accounts?.map((a) => (
-              <option key={a._id} value={a._id}>{a.name}</option>
-            ))}
-          </select>
-          {errors.account && <p className="text-red-500 text-xs mt-1">{errors.account}</p>}
         </div>
 
         {/* Date */}

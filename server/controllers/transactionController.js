@@ -1,5 +1,16 @@
 const Transaction = require("../models/Transaction");
 const Account = require("../models/Account");
+const { getExchangeRates, convert } = require("../utils/exchangeRateService");
+
+// Convert an amount from its own currency to the target currency, falling
+// back to the raw amount if a rate is missing (shouldn't normally happen).
+const toPrimary = (amount, fromCurrency, primaryCurrency, rates) => {
+  try {
+    return convert(amount, fromCurrency || "LKR", primaryCurrency, rates);
+  } catch {
+    return amount;
+  }
+};
 
 // Helper - adjust account balance when a transaction is created/edited/deleted
 const adjustBalance = async (accountId, amount, type, direction) => {
@@ -88,33 +99,32 @@ const getTransactions = async (req, res, next) => {
 
     const [transactions, total] = await Promise.all([
       Transaction.find(filter)
-        .populate("account", "name type color")
-        .populate("toAccount", "name type color")
+        .populate("account", "name type color currency")
+        .populate("toAccount", "name type color currency")
         .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit)),
       Transaction.countDocuments(filter),
     ]);
 
-    // Totals for filtered results
+    // Totals for filtered results, converted to the user's primary currency
     // Calculate totals excluding debt-generated transactions (same filter as category breakdown)
     const totalsFilter = {
       ...filter,
       isDebtTransaction: { $ne: true },
     };
 
-    const totals = await Transaction.aggregate([
-      { $match: totalsFilter },
-      {
-        $group: {
-          _id: "$type",
-          total: { $sum: "$amount" },
-        },
-      },
-    ]);
+    const primaryCurrency = req.user.currency || "LKR";
+    const { rates } = await getExchangeRates();
+    const totalsDocs = await Transaction.find(totalsFilter).select("type amount currency");
 
-    const income = totals.find((t) => t._id === "income")?.total || 0;
-    const expense = totals.find((t) => t._id === "expense")?.total || 0;
+    let income = 0;
+    let expense = 0;
+    for (const t of totalsDocs) {
+      const converted = toPrimary(t.amount, t.currency, primaryCurrency, rates);
+      if (t.type === "income") income += converted;
+      else if (t.type === "expense") expense += converted;
+    }
 
     res.status(200).json({
       success: true,
@@ -125,6 +135,7 @@ const getTransactions = async (req, res, next) => {
       income,
       expense,
       balance: income - expense,
+      primaryCurrency,
       transactions,
     });
   } catch (error) {
@@ -184,6 +195,7 @@ const createTransaction = async (req, res, next) => {
       user: req.user._id,
       type,
       amount: parseFloat(amount),
+      currency: accountDoc.currency,
       category,
       account,
       date: date || new Date(),
@@ -229,13 +241,14 @@ const updateTransaction = async (req, res, next) => {
 
     // If account changed, verify new account
     const newAccountId = account || transaction.account;
+    let newAccountDoc = null;
     if (account && account !== String(transaction.account)) {
-      const accountDoc = await Account.findOne({
+      newAccountDoc = await Account.findOne({
         _id: account,
         user: req.user._id,
         isActive: true,
       });
-      if (!accountDoc) {
+      if (!newAccountDoc) {
         // Re-apply old effect and bail
         await adjustBalance(
           transaction.account,
@@ -254,6 +267,8 @@ const updateTransaction = async (req, res, next) => {
     transaction.amount = amount ? parseFloat(amount) : transaction.amount;
     transaction.category = category || transaction.category;
     transaction.account = newAccountId;
+    // Transaction currency always tracks its account's currency
+    if (newAccountDoc) transaction.currency = newAccountDoc.currency;
     transaction.date = date || transaction.date;
     transaction.description =
       description !== undefined ? description : transaction.description;
@@ -319,25 +334,16 @@ const deleteTransaction = async (req, res, next) => {
 const getMonthlySummary = async (req, res, next) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
+    const primaryCurrency = req.user.currency || "LKR";
+    const { rates } = await getExchangeRates();
 
-    const summary = await Transaction.aggregate([
-      {
-        $match: {
-          user: req.user._id,
-          date: {
-            $gte: new Date(year, 0, 1),
-            $lt: new Date(year + 1, 0, 1),
-          },
-        },
+    const docs = await Transaction.find({
+      user: req.user._id,
+      date: {
+        $gte: new Date(year, 0, 1),
+        $lt: new Date(year + 1, 0, 1),
       },
-      {
-        $group: {
-          _id: { month: { $month: "$date" }, type: "$type" },
-          total: { $sum: "$amount" },
-        },
-      },
-      { $sort: { "_id.month": 1 } },
-    ]);
+    }).select("type amount currency date");
 
     // Build 12-month array
     const months = [
@@ -354,19 +360,14 @@ const getMonthlySummary = async (req, res, next) => {
       "Nov",
       "Dec",
     ];
-    const result = months.map((month, i) => {
-      const inc = summary.find(
-        (s) => s._id.month === i + 1 && s._id.type === "income",
-      );
-      const exp = summary.find(
-        (s) => s._id.month === i + 1 && s._id.type === "expense",
-      );
-      return {
-        month,
-        income: inc?.total || 0,
-        expense: exp?.total || 0,
-      };
-    });
+    const result = months.map((month) => ({ month, income: 0, expense: 0 }));
+
+    for (const t of docs) {
+      if (t.type !== "income" && t.type !== "expense") continue;
+      const monthIndex = new Date(t.date).getMonth();
+      const converted = toPrimary(t.amount, t.currency, primaryCurrency, rates);
+      result[monthIndex][t.type] += converted;
+    }
 
     res.status(200).json({ success: true, summary: result });
   } catch (error) {
@@ -399,17 +400,23 @@ const getCategoryBreakdown = async (req, res, next) => {
       filter.date = { $gte: new Date(y, m, 1), $lt: new Date(y, m + 1, 1) };
     }
 
-    const breakdown = await Transaction.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: "$category",
-          total: { $sum: "$amount" },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { total: -1 } },
-    ]);
+    const primaryCurrency = req.user.currency || "LKR";
+    const { rates } = await getExchangeRates();
+    const docs = await Transaction.find(filter).select("category amount currency");
+
+    const totalsByCategory = {};
+    for (const t of docs) {
+      const converted = toPrimary(t.amount, t.currency, primaryCurrency, rates);
+      if (!totalsByCategory[t.category]) {
+        totalsByCategory[t.category] = { total: 0, count: 0 };
+      }
+      totalsByCategory[t.category].total += converted;
+      totalsByCategory[t.category].count += 1;
+    }
+
+    const breakdown = Object.entries(totalsByCategory)
+      .map(([category, { total, count }]) => ({ _id: category, total, count }))
+      .sort((a, b) => b.total - a.total);
 
     res.status(200).json({ success: true, breakdown });
   } catch (error) {
@@ -461,12 +468,26 @@ const createTransfer = async (req, res, next) => {
     const transferDesc =
       description || `Transfer from ${fromAcc.name} to ${toAcc.name}`;
 
+    // Cross-currency: convert the amount into the destination account's
+    // currency so the credit side reflects what actually lands there.
+    // Each linked transaction stores its own amount in its own currency.
+    // Accounts created before multi-currency support have no `currency`
+    // stored yet, so normalize missing values to LKR before comparing.
+    const fromCurrency = fromAcc.currency || "LKR";
+    const toCurrency = toAcc.currency || "LKR";
+    let receivedAmount = parsedAmount;
+    if (fromCurrency !== toCurrency) {
+      const { rates } = await getExchangeRates();
+      receivedAmount = convert(parsedAmount, fromCurrency, toCurrency, rates);
+    }
+
     // Create two linked transactions - debit (from) and credit (to)
     const [debitTx, creditTx] = await Promise.all([
       Transaction.create({
         user: req.user._id,
         type: "transfer",
         amount: parsedAmount,
+        currency: fromCurrency,
         category: "Transfer",
         account: fromAccount,
         toAccount: toAccount,
@@ -478,7 +499,8 @@ const createTransfer = async (req, res, next) => {
       Transaction.create({
         user: req.user._id,
         type: "transfer",
-        amount: parsedAmount,
+        amount: receivedAmount,
+        currency: toCurrency,
         category: "Transfer",
         account: toAccount,
         toAccount: fromAccount,
@@ -489,19 +511,19 @@ const createTransfer = async (req, res, next) => {
       }),
     ]);
 
-    // Update both account balances
+    // Update both account balances - each in its own currency
     await Promise.all([
       Account.findByIdAndUpdate(fromAccount, {
         $inc: { currentBalance: -parsedAmount },
       }),
       Account.findByIdAndUpdate(toAccount, {
-        $inc: { currentBalance: parsedAmount },
+        $inc: { currentBalance: receivedAmount },
       }),
     ]);
 
     const populated = await debitTx.populate(
       "account toAccount",
-      "name type color",
+      "name type color currency",
     );
 
     res
@@ -530,31 +552,14 @@ const deleteTransfer = async (req, res, next) => {
         .json({ success: false, message: "Transfer not found" });
     }
 
-    // Find the debit side (from account) to reverse balances
-    // Both transactions have the same amount, just reverse both effects
-    const tx = transactions[0];
-    const parsedAmount = tx.amount;
-
-    // Get the two accounts from the two transactions
-    const accountIds = transactions.map((t) => t.account.toString());
-    const uniqueAccounts = [...new Set(accountIds)];
-
-    // Reverse: one account gets +amount, other gets -amount back to original
-    // The debit tx's account loses the amount - so add it back
-    // The credit tx's account gains the amount - so subtract it back
-    // We identify which is which by toAccount reference
+    // Each side of a transfer may hold a different amount (cross-currency),
+    // so reverse each transaction by its own stored amount rather than
+    // assuming both sides match.
     for (const t of transactions) {
-      const isDebit =
-        t.toAccount && t.account.toString() !== t.toAccount.toString();
-      if (isDebit) {
-        await Account.findByIdAndUpdate(t.account, {
-          $inc: { currentBalance: parsedAmount },
-        });
-        await Account.findByIdAndUpdate(t.toAccount, {
-          $inc: { currentBalance: -parsedAmount },
-        });
-        break;
-      }
+      const delta = t.isDebit ? t.amount : -t.amount;
+      await Account.findByIdAndUpdate(t.account, {
+        $inc: { currentBalance: delta },
+      });
     }
 
     await Transaction.deleteMany({ transferRef, user: req.user._id });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Modal from "../shared/Modal";
+import { formatCurrency } from "../../utils/currencies";
 
 const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
   const isEdit = !!debt;
@@ -63,8 +64,9 @@ const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
     onSubmit({ ...form, amount: parseFloat(form.amount) });
   };
 
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+  const selectedLinkedAccount = accounts?.find(
+    (a) => a._id === form.linkedAccount,
+  );
 
   return (
     <Modal
@@ -124,7 +126,14 @@ const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
 
         {/* Amount */}
         <div>
-          <label className="label">Amount</label>
+          <label className="label">
+            Amount{" "}
+            {selectedLinkedAccount && (
+              <span className="text-gray-400 font-normal">
+                ({selectedLinkedAccount.currency || "LKR"})
+              </span>
+            )}
+          </label>
           <input
             name="amount"
             type="number"
@@ -158,7 +167,7 @@ const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
             <option value="">-- Don't link an account --</option>
             {accounts?.map((a) => (
               <option key={a._id} value={a._id}>
-                {a.name} - LKR {fmt(a.currentBalance)}
+                {a.name} - {formatCurrency(a.currentBalance, a.currency)}
               </option>
             ))}
           </select>
@@ -167,8 +176,8 @@ const DebtForm = ({ isOpen, onClose, onSubmit, debt, accounts, isLoading }) => {
               className={`text-xs mt-1 ${form.debtType === "to_pay" ? "text-green-600" : "text-red-500"}`}
             >
               {form.debtType === "to_pay"
-                ? `✓ Account balance will increase by LKR ${form.amount ? Number(form.amount).toLocaleString() : "0"}`
-                : `✓ Account balance will decrease by LKR ${form.amount ? Number(form.amount).toLocaleString() : "0"}`}
+                ? `✓ Account balance will increase by ${form.amount ? formatCurrency(form.amount, selectedLinkedAccount?.currency) : "0"}`
+                : `✓ Account balance will decrease by ${form.amount ? formatCurrency(form.amount, selectedLinkedAccount?.currency) : "0"}`}
             </p>
           )}
           {isEdit && debt?.accountAdjusted && (

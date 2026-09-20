@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Modal from "../shared/Modal";
 import { MdCheckCircle } from "react-icons/md";
+import { useExchangeRates } from "../../context/ExchangeRateContext";
+import { formatCurrency } from "../../utils/currencies";
 
 const SettleDebtModal = ({
   isOpen,
@@ -11,11 +13,26 @@ const SettleDebtModal = ({
   currency,
   isLoading,
 }) => {
+  const { rates: exchangeRates } = useExchangeRates();
   const [settlementAccount, setSettlementAccount] = useState("");
 
   const isPay = debt?.debtType === "to_pay";
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+  const debtCurrency = debt?.currency || "LKR";
+
+  const selectedAccount = accounts?.find((a) => a._id === settlementAccount);
+  // Accounts created before multi-currency support have no `currency`
+  // stored yet - treat missing as LKR rather than a mismatch.
+  const settlementCurrency = selectedAccount?.currency || "LKR";
+  const isCrossCurrency = selectedAccount && settlementCurrency !== debtCurrency;
+
+  let settleAmount = debt?.amount;
+  if (isCrossCurrency && exchangeRates) {
+    const fromRate = exchangeRates[debtCurrency];
+    const toRate = exchangeRates[settlementCurrency];
+    if (fromRate && toRate) {
+      settleAmount = (debt.amount * fromRate) / toRate;
+    }
+  }
 
   const handleConfirm = () => {
     onConfirm(debt, settlementAccount || null);
@@ -41,8 +58,8 @@ const SettleDebtModal = ({
           <MdCheckCircle size={32} className="text-green-500 mb-2" />
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             {isPay
-              ? `Repaying LKR ${fmt(debt.amount)} to ${debt.personName}`
-              : `Received LKR ${fmt(debt.amount)} from ${debt.personName}`}
+              ? `Repaying ${formatCurrency(debt.amount, debtCurrency)} to ${debt.personName}`
+              : `Received ${formatCurrency(debt.amount, debtCurrency)} from ${debt.personName}`}
           </p>
         </div>
 
@@ -59,7 +76,7 @@ const SettleDebtModal = ({
             <option value="">-- Don't link an account --</option>
             {accounts?.map((a) => (
               <option key={a._id} value={a._id}>
-                {a.name} - {currency} {fmt(a.currentBalance)}
+                {a.name} - {formatCurrency(a.currentBalance, a.currency)}
               </option>
             ))}
           </select>
@@ -68,8 +85,14 @@ const SettleDebtModal = ({
               className={`text-xs mt-1 ${isPay ? "text-red-500" : "text-green-600"}`}
             >
               {isPay
-                ? `✓ Account balance will decrease by ${currency} ${fmt(debt.amount)}`
-                : `✓ Account balance will increase by ${currency} ${fmt(debt.amount)}`}
+                ? `✓ Account balance will decrease by ${formatCurrency(settleAmount, settlementCurrency)}`
+                : `✓ Account balance will increase by ${formatCurrency(settleAmount, settlementCurrency)}`}
+              {isCrossCurrency && (
+                <>
+                  {" "}
+                  (converted from {formatCurrency(debt.amount, debtCurrency)})
+                </>
+              )}
             </p>
           )}
         </div>

@@ -9,6 +9,7 @@ import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import EmptyState from "../../components/shared/EmptyState";
 import Spinner from "../../components/shared/Spinner";
 import SummaryCard from "../../components/shared/SummaryCard";
+import { formatCurrency } from "../../utils/currencies";
 import {
   MdAdd,
   MdCreditCard,
@@ -180,9 +181,6 @@ const Debts = () => {
       setDeleting(false);
     }
   };
-
-  const fmt = (v) =>
-    Number(v).toLocaleString("en-LK", { minimumFractionDigits: 2 });
 
   if (loading) return <Spinner size="lg" className="h-64" />;
 
@@ -391,7 +389,7 @@ const Debts = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Debt"
-        message={`Delete debt of ${currency} ${deleteTarget ? fmt(deleteTarget.amount) : ""} with ${deleteTarget?.personName}?${deleteTarget?.linkedAccount && deleteTarget?.status === "pending" ? " Account balance will be reversed." : ""}`}
+        message={`Delete debt of ${deleteTarget ? formatCurrency(deleteTarget.amount, deleteTarget.currency) : ""} with ${deleteTarget?.personName}?${deleteTarget?.linkedAccount && deleteTarget?.status === "pending" ? " Account balance will be reversed." : ""}`}
         isLoading={deleting}
       />
     </div>

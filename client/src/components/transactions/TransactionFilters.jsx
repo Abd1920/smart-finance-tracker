@@ -98,6 +98,7 @@ const TransactionFilters = ({ filters, onChange, onReset, accounts }) => {
                 <option value="">All Types</option>
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
+                <option value="transfer">Transfer</option>
               </select>
             </div>
 

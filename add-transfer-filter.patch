@@ -1,0 +1,12 @@
+diff --git a/client/src/components/transactions/TransactionFilters.jsx b/client/src/components/transactions/TransactionFilters.jsx
+index 14ae50f..3ce20af 100644
+--- a/client/src/components/transactions/TransactionFilters.jsx
++++ b/client/src/components/transactions/TransactionFilters.jsx
+@@ -98,6 +98,7 @@ const TransactionFilters = ({ filters, onChange, onReset, accounts }) => {
+                 <option value="">All Types</option>
+                 <option value="income">Income</option>
+                 <option value="expense">Expense</option>
++                <option value="transfer">Transfer</option>
+               </select>
+             </div>
+ 

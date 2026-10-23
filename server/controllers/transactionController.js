@@ -76,7 +76,12 @@ const getTransactions = async (req, res, next) => {
     } else if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
+      if (endDate) {
+        // Include the whole last day of the range, not just its first instant
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.date.$lte = end;
+      }
     }
 
     // Amount range
